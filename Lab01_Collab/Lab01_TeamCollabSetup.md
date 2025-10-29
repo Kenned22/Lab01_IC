@@ -10,7 +10,7 @@ editor_options:
 
 ## 1 Client Brief
 
-**Client:** Andrew Sandall (Aditude) \
+**Client:** Andrew Sandall (Aditude) \ edit for issues
 **Project:** Oregon Ad Bidding Dataset\
 **Deliverables:** 
 
