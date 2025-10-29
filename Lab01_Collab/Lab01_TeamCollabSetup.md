@@ -6,9 +6,7 @@ editor_options:
 
 # Tech Lab 1: Team Collaboration Setup
 
-*Use this document as your editable team workspace. Each section may
-be filled in collaboratively during the activity or afterward for
-submission. Each team member must make at least 4 edits to this document using Git, providing a Commit message explaining briefly what the edit was and pushing your changes*
+*Use this document as your editable team workspace. Each section may be filled in collaboratively during the activity or afterward for submission. Between Sections 1 through 6, each team member must make at least 4 edits to this document using Git, providing a Commit message explaining briefly what the edit was and pushing your changes. For Section 7, each member must provide their own reflections.*
 
 ## 1 Client Brief
 
@@ -52,7 +50,7 @@ How will you celebrate tasks completed?
 
 ------------------------------------------------------------------------
 
-## 4 Board Setup
+## 3 Board Setup
 
 ### Columns
 
@@ -75,7 +73,7 @@ Backlog → To Do → In Progress → Review → Done
 
 ------------------------------------------------------------------------
 
-## 5 Daily Stand-Up Simulation Log
+## 4 Daily Stand-Up Simulation Log
 
 ### Purpose
 
