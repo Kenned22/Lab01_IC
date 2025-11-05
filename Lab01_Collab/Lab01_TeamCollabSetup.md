@@ -170,6 +170,17 @@ next time?
 
 Lilly's Reflection Response:
 
+  1. My role in this project is project manager. I learned a bit about coordinating projects through github
+     it was interesting to learn about branching and committing part of coordination since I typically work
+     by myself.
+  2. The Kanban system helped because it forced me to break down the tasks into smaller pieces instead of getting
+     lost in the big picture.
+  3. In a real consulting project, I would implement clearer task ownership by assigning one primary owner per task. 
+     This would reduce confusion, avoid duplicated work, and improve accountability. While collaboration is important, 
+     having a single person ultimately responsible for driving a task to completion ensures deadlines are met 
+     and updates are consistent.
+
+
 Neal's Reflection Response:
 
 Edwin's Refleciton Response:
