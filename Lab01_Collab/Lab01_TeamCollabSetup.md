@@ -80,6 +80,8 @@ Propose 3-5 performance metrics you plan on using to assess if changes need to b
 
 How will you celebrate tasks completed?  
 
+  -By taking a moment to acknowledge the work done
+
 ------------------------------------------------------------------------
 
 ## 3 Board Setup
@@ -154,7 +156,14 @@ next time?
 ## 7  Reflection Questions (Individual)
 
 1.  What was your role and what did you learn about team coordination?
+    
+    My role in this project is group facilitator 
+    
 2.  How did the Kanban system help (or hinder) your progress?
+
+    The board helped because it forced me to think about what tasks we want to put on there and get done instead of getting
+    lost in the big 
+
 3.  What’s one improvement you would apply in a real consulting project?
 
 ------------------------------------------------------------------------
