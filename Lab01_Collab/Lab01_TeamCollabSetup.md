@@ -10,7 +10,7 @@ editor_options:
 
 ## 1 Client Brief
 
-**Client:** Andrew Sandall (Aditude) \ edit for issues
+**Client:** Andrew Sandall (Aditude) \ making changes for commit
 **Project:** Oregon Ad Bidding Dataset\
 **Deliverables:** 
 
@@ -27,10 +27,10 @@ editor_options:
 
 | Role                   | Name | Responsibilities                       |
 |------------------------|------|----------------------------------------|
-| Project Manager        |      | Coordinates work, updates board        |
-| Data Engineer          |      | Manages data imports, cleaning scripts |
-| Data Scientist         |      | Conducts EDA, visualization            |
-| Analyst / Communicator |      | Summarizes findings, writes reports    |
+| Project Manager        |  Lilly Kennedy    | Coordinates work, updates board        |
+| Data Engineer          |  Edwin    | Manages data imports, cleaning scripts |
+| Data Scientist         |  Bingtang    | Conducts EDA, visualization            |
+| Analyst / Communicator |  Neal   | Summarizes findings, writes reports    |
 
 ### Collaboration Policies
 
