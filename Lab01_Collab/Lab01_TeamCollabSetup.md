@@ -163,10 +163,15 @@ next time?
 ## 7  Reflection Questions (Individual)
 
 1.  What was your role and what did you learn about team coordination?
-    
 2.  How did the Kanban system help (or hinder) your progress?
-
 3.  What’s one improvement you would apply in a real consulting project?
 
 ------------------------------------------------------------------------
 
+Lilly's Reflection Response:
+
+Neal's Reflection Response:
+
+Edwin's Refleciton Response:
+
+Bingtang's Reflection Response:
