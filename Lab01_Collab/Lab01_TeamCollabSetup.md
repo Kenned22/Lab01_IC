@@ -10,7 +10,7 @@ editor_options:
 
 ## 1 Client Brief
 
-**Client:** Andrew Sandall \ making changes for commit stuff
+**Client:** Andrew Sandall-Edwin \ making changes for commit stuff
 **Project:** Oregon Ad Bidding Dataset\
 **Deliverables:** 
 
