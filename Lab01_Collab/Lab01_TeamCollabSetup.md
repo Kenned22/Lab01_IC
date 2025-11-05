@@ -32,10 +32,10 @@ editor_options:
 
 | Role                   | Name | Responsibilities                       |
 |------------------------|------|----------------------------------------|
-| Project Manager        |  Lilly Kennedy    | Coordinates work, updates board|
+| Project Manager        |  Lilly Kennedy    | Coordinates work, updates board        |
 | Data Engineer          |  Edwin            | Manages data imports, cleaning scripts |
-| Data Scientist/Communicator|  Neal         | Conducts EDA, visualization|
-| Analyst |  Bingtang                        | Summarizes findings, writes reports|
+| Data Scientist/Communicator|  Neal         | Conducts EDA, visualization            |
+| Analyst                |  Bingtang         | Summarizes findings, writes reports    |
 
 ### Collaboration Policies
 
