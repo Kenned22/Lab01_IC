@@ -10,7 +10,11 @@ editor_options:
 
 ## 1 Client Brief
 
+
 **Client:** Andrew Sandall (Aditude) is \ making changes for commit stuff
+
+
+
 **Project:** Oregon Ad Bidding Dataset\
 **Deliverables:** 
 
