@@ -27,22 +27,56 @@ editor_options:
 
 | Role                   | Name | Responsibilities                       |
 |------------------------|------|----------------------------------------|
-| Project Manager        |  Lilly Kennedy    | Coordinates work, updates board        |
-| Data Engineer          |  Edwin    | Manages data imports, cleaning scripts |
-| Data Scientist         |  Neal    | Conducts EDA, visualization            |
-| Analyst / Communicator |     | Summarizes findings, writes reports    |
+| Project Manager        |  Lilly Kennedy    | Coordinates work, updates board|
+| Data Engineer          |  Edwin            | Manages data imports, cleaning scripts |
+| Data Scientist/Communicator|  Neal         | Conducts EDA, visualization|
+| Analyst |  Bingtang                        | Summarizes findings, writes reports|
 
 ### Collaboration Policies
 
-Specify your collaboration policies here  -- your decision-making process (e.g., majority vote tech choices, consensus deliverables), WIP limits/person, Definition of Done (e.g., documented, peer-reviewed, reproducible), who reviews the work, etc.
+Specify your collaboration policies here  -- your decision-making process (e.g., majority vote tech choices, consensus deliverables), 
+WIP limits/person, Definition of Done (e.g., documented, peer-reviewed, reproducible), who reviews the work, etc.
+
+ -Collaboration policies: 
+      -majority vote if discussion fails to resolve issue
+      -consensus deliverables, we all agree on deliverables before they become to dos
+      
+ -WIP limits: 2 per person
+ -Definition of done:documented, peer-reviewed, reproducible
+ -Who reviews the work: we will set a peer-reviewer when assigning and agreeing on tasks
 
 ### Communication means and cadence
 
 Be explicit about how you plan on communicating
 
+  -Currently communicating per text group chat, but will switch to zoom if we need to collaborate for an extended period of time
+   outside of class
+  -We will be communicating at least twice a week in class and decide if we need to communicate more per task by week
+
 ### Performance metrics
 
 Propose 3-5 performance metrics you plan on using to assess if changes need to be made.
+
+- **Task Throughput (Tasks Completed per Week)**  
+  - Measures team productivity.  
+  - Count the number of tasks moved to "Done" each week.
+
+- **Average Cycle Time**  
+  - Indicates how long tasks take from "In Progress" to "Done".  
+  - Track the average number of days per task in process.
+
+- **Review Rejection Rate**  
+  - Highlights quality or alignment issues.  
+  - Count how many tasks are sent back to "In Progress" after review.
+
+- **Team Engagement (Commits & Contributions per Member)**  
+  - Ensures everyone participates consistently.  
+  - Each member should have at least 4 commits; look for even contribution spread.
+
+- **Blocked Time per Task**  
+  - Identifies bottlenecks or stalled work.  
+  - Track how long tasks remain blocked or log blockers in stand-up logs.
+
 
 ### Completion Rituals
 
