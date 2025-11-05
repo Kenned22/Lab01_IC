@@ -10,7 +10,14 @@ editor_options:
 
 ## 1 Client Brief
 
-**Client:** Andrew Sandall (Aditude) \ NEALS CHANGE
+
+
+**Client:** Andrew Sandall (Aditude) is \ making changes for commit stuff
+
+
+
+**Project:** Oregon Ad Bidding Dataset\
+**Deliverables:** 
 
 - Identify and document issues in data as well as corrections and transformations 
 - Provide a Clean dataset 
