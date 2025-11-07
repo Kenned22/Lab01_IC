@@ -186,6 +186,8 @@ Neal's Reflection Response:
   2. We have not used the Kanban board long enough to fully assess its strengths and weaknesses. However, it’s already proven helpful in visualizing outstanding tasks and coordinating team efforts. While we’ll likely encounter some hurdles that need fine-tuning, the value of the Kanban system is evident. 
   3. Whenever possible, I would like to ensure that clients are well informed about the topics they are asking the consultants to address. They don’t need to be experts, but a solid understanding helps set realistic expectations and reduces the likelihood of unreasonable requests.  
   
+    We need to update git so that pushes to main create a pull request instead of merging automatically
+    
 Edwin's Refleciton Response:
 
 Bingtang's Reflection Response:
