@@ -210,3 +210,19 @@ Edwin's Refleciton Response:
     and quality checks to improve efficiency and reduce manual errors.
 
 Bingtang's Reflection Response:
+
+1. My role was Analyst, focusing on summarizing findings, and 
+   writing reports.I learned that team coordination is the critical 
+   link between raw data and client recommendations. I must 
+   proactively check in with them to understand the context 
+   behind their data, not just wait for a final file.
+
+   
+2. The Kanban system helps me visualize the workflow, and identifies 
+   Blockers clearly, so I could move my task card to a blocked column 
+   and tag the responsible person.
+   
+3. In a real consulting project, I would like to ask another analyst or 
+   consultant to review my work before I send it to the Project Manager. 
+   A fresh perspective from others helps me spot logical flaws, formatting 
+   errors, and overlooked confusing passages.
