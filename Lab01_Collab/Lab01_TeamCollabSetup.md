@@ -33,12 +33,12 @@ Section 7, each member must provide their own reflections.*
 
 ### Roles & Responsibilities (these are just some examples, create roles as you see fit)
 
-| Role | Name | Responsibilities |
-|---------------------|---------------|-------------------------------------|
-| Project Manager | Lilly Kennedy | Coordinates work, updates board |
-| Data Engineer | Edwin | Manages data imports, cleaning scripts |
-| Data Scientist/Communicator | Neal | Conducts EDA, visualization |
-| Analyst | Bingtang | Summarizes findings, writes reports |
+| Role                        | Name          | Responsibilities                       |
+|-----------------------------|---------------|----------------------------------------|
+| Project Manager             | Lilly Kennedy | Coordinates work, updates board        |
+| Data Engineer               | Edwin         | Manages data imports, cleaning scripts |
+| Data Scientist/Communicator | Neal          | Conducts EDA, visualization            |
+| Analyst                     | Bingtang      | Summarizes findings, writes reports    |
 
 ### Collaboration Policies
 
