@@ -127,12 +127,12 @@ you'd like*
 A 10-minute synchronization ritual to share progress, identify blockers,
 and plan next steps.
 
-| Team Member | Yesterday | Today | Blockers |
-|-------------|-----------|-------|----------|
-|             |           |       |          |
-|             |           |       |          |
-|             |           |       |          |
-
+| Team Member   | Yesterday | Today | Blockers |
+|---------------|-----------|-------|----------|
+| Lilly         | Setting up Kanban board and git workflow| writing out git workflow     | None         |
+| Neal          | Performing exploritory data analysis          | Finalizing exploratory data analysis and making plots      | None for now, will need automated workflow to streamline         |
+| Edwin         | Loading and cleaning client data  | automating data pipeline       | still working, more time needed         |
+| Bintang       | working on standard layout          | working on layout      | waiting on data          |
 ### Guidelines
 
 -   Keep responses under 1 minute per person.
