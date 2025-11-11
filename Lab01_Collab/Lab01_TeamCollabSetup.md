@@ -15,7 +15,7 @@ Section 7, each member must provide their own reflections.*
 
 ## 1 Client Brief
 
-**Client:** Andrew Sandall (Aditude) is  making changes for commit stuff
+**Client:** Andrew Sandall (Aditude) is making changes for commit stuff
 
 **Project:** Oregon Ad Bidding Dataset\
 **Deliverables:**
@@ -33,12 +33,12 @@ Section 7, each member must provide their own reflections.*
 
 ### Roles & Responsibilities (these are just some examples, create roles as you see fit)
 
-| Role                        | Name          | Responsibilities                       |
-|-----------------------------|---------------|----------------------------------------|
-| Project Manager             | Lilly Kennedy | Coordinates work, updates board        |
-| Data Engineer               | Edwin         | Manages data imports, cleaning scripts |
-| Data Scientist/Communicator | Neal          | Conducts EDA, visualization            |
-| Analyst                     | Bingtang      | Summarizes findings, writes reports    |
+| Role | Name | Responsibilities |
+|-----------------------|-----------------|--------------------------------|
+| Project Manager | Lilly Kennedy | Coordinates work, updates board |
+| Data Engineer | Edwin | Manages data imports, cleaning scripts, data manipulation |
+| Data Scientist/Communicator | Neal | Conducts EDA, visualization |
+| Analyst | Bingtang | Summarizes findings, writes reports |
 
 ### Collaboration Policies
 
@@ -92,7 +92,9 @@ need to be made.
 
 How will you celebrate tasks completed?
 
--By taking a moment to acknowledge the work done
+-   By taking a moment to acknowledge the work done
+
+-   Shout-out for work well done
 
 ------------------------------------------------------------------------
 
@@ -127,12 +129,13 @@ you'd like*
 A 10-minute synchronization ritual to share progress, identify blockers,
 and plan next steps.
 
-| Team Member   | Yesterday | Today | Blockers |
-|---------------|-----------|-------|----------|
-| Lilly         | Setting up Kanban board and git workflow| writing out git workflow     | None         |
-| Neal          | Performing exploritory data analysis          | Finalizing exploratory data analysis and making plots      | None for now, will need automated workflow to streamline         |
-| Edwin         | Loading and cleaning client data  | automating data pipeline       | still working, more time needed         |
-| Bintang       | working on standard layout          | working on layout      | waiting on data          |
+| Team Member | Yesterday | Today | Blockers |
+|-----------------------|-----------------|----------------|----------------|
+| Lilly | Setting up Kanban board and git workflow | writing out git workflow | None |
+| Neal | Performing exploritory data analysis | Finalizing exploratory data analysis and making plots | None for now, will need automated workflow to streamline |
+| Edwin | Loading, cleaning and data transformation | automating data pipeline | still working, more time needed |
+| Bintang | working on standard layout | working on layout | waiting on data |
+
 ### Guidelines
 
 -   Keep responses under 1 minute per person.
@@ -189,13 +192,23 @@ Lilly's Reflection Response:
     responsible for driving a task to completion ensures deadlines are
     met and updates are consistent.
 
-Neal's Reflection Response:
-  1. My role is Data Scientist/Communicator. I observed some of the thorny issues that arise when multiple people are all trying to work on the same doc. Without a proper git workflow, things can become messy, fast.
-  2. We have not used the Kanban board long enough to fully assess its strengths and weaknesses. However, it’s already proven helpful in visualizing outstanding tasks and coordinating team efforts. While we’ll likely encounter some hurdles that need fine-tuning, the value of the Kanban system is evident. 
-  3. Whenever possible, I would like to ensure that clients are well informed about the topics they are asking the consultants to address. They don’t need to be experts, but a solid understanding helps set realistic expectations and reduces the likelihood of unreasonable requests.  
-  
-    We need to update git so that pushes to main create a pull request instead of merging automatically
-    
+Neal's Reflection Response: 1. My role is Data Scientist/Communicator. I
+observed some of the thorny issues that arise when multiple people are
+all trying to work on the same doc. Without a proper git workflow,
+things can become messy, fast. 2. We have not used the Kanban board long
+enough to fully assess its strengths and weaknesses. However, it’s
+already proven helpful in visualizing outstanding tasks and coordinating
+team efforts. While we’ll likely encounter some hurdles that need
+fine-tuning, the value of the Kanban system is evident. 3. Whenever
+possible, I would like to ensure that clients are well informed about
+the topics they are asking the consultants to address. They don’t need
+to be experts, but a solid understanding helps set realistic
+expectations and reduces the likelihood of unreasonable requests.
+
+```         
+We need to update git so that pushes to main create a pull request instead of merging automatically
+```
+
 Edwin's Refleciton Response:
 
 1.  My role was Data Engineer, focusing on data cleaning, handling
@@ -211,18 +224,17 @@ Edwin's Refleciton Response:
 
 Bingtang's Reflection Response:
 
-1. My role was Analyst, focusing on summarizing findings, and 
-   writing reports.I learned that team coordination is the critical 
-   link between raw data and client recommendations. I must 
-   proactively check in with them to understand the context 
-   behind their data, not just wait for a final file.
+1.  My role was Analyst, focusing on summarizing findings, and writing
+    reports.I learned that team coordination is the critical link
+    between raw data and client recommendations. I must proactively
+    check in with them to understand the context behind their data, not
+    just wait for a final file.
 
-   
-2. The Kanban system helps me visualize the workflow, and identifies 
-   Blockers clearly, so I could move my task card to a blocked column 
-   and tag the responsible person.
-   
-3. In a real consulting project, I would like to ask another analyst or 
-   consultant to review my work before I send it to the Project Manager. 
-   A fresh perspective from others helps me spot logical flaws, formatting 
-   errors, and overlooked confusing passages.
+2.  The Kanban system helps me visualize the workflow, and identifies
+    Blockers clearly, so I could move my task card to a blocked column
+    and tag the responsible person.
+
+3.  In a real consulting project, I would like to ask another analyst or
+    consultant to review my work before I send it to the Project
+    Manager. A fresh perspective from others helps me spot logical
+    flaws, formatting errors, and overlooked confusing passages.
