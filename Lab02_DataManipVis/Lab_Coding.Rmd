@@ -134,13 +134,15 @@ Your code and reasoning must reflect **your own team’s understanding**.
 6.  Load `tidyverse`, `ggplot2` and any other packages you find useful (`arrow`, `lubridate`, etc.)
 
 ```{r load-data}
+setwd(getSrcDirectory(function() {})[1])
+
 #Load relevant libraries - update as needed if there are functions you need that are not in existing libraries
 library(tidyverse)
 library(arrow)
 
 
 #Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
-bids <- read_parquet("../data/bids_data_vDTR.parquet") 
+bids <- read_parquet("../data/bids_data_vDTR.parquet")
 glimpse(bids)
 
 ```
