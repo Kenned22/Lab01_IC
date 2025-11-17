@@ -92,6 +92,8 @@ Upload a screenshot (I'll check the time and date of the file) of the Kanban boa
 
 -   Add it **here**.
 
+![Kanban Screenshot](kanban_screenshot.png)
+
 Make use of the team charter that you designed in Lab01, using the Kanban board throughout the project to keep you on task, correcting issues that arise and readjusting as needed.
 
 
@@ -145,7 +147,7 @@ print(getwd())
 ```{r}
 
 #Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
-bids <- read_parquet("./data/bids_data_vDTR.parquet")
+bids <- read_parquet("../data/bids_data_vDTR.parquet")
 glimpse(bids)
 
 ```
