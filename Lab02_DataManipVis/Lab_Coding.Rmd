@@ -66,8 +66,8 @@ Decide how to divide the work (3–4 members).
 
     * Section 1: Initial Orientation - 
     * Section 2: Data Exploration (dplyr) - 
-    * Section 3: Visualizations - Lilly
-    * Section 4: Synthesis & Reflection - Bingtang
+    * Section 3: Visualizations - 
+    * Section 4: Synthesis & Reflection - 
     
 -   Section coordinators will ensure their sections are completed throughout the lab's development
 
@@ -134,14 +134,18 @@ Your code and reasoning must reflect **your own team’s understanding**.
 6.  Load `tidyverse`, `ggplot2` and any other packages you find useful (`arrow`, `lubridate`, etc.)
 
 ```{r load-data}
-
 #Load relevant libraries - update as needed if there are functions you need that are not in existing libraries
 library(tidyverse)
 library(arrow)
 
+print(getwd())
+```
+
+
+```{r}
 
 #Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
-bids <- read_parquet("../data/bids_data_vDTR.parquet")
+bids <- read_parquet("./data/bids_data_vDTR.parquet")
 glimpse(bids)
 
 ```
