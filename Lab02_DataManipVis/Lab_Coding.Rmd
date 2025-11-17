@@ -1,6 +1,6 @@
 ---
 title: "Lab02: Data Manipulation and Visualization with R"
-author: "TEAM NAME (edit this)"
+author: "International Commuters"
 output:
   html_document:
     toc: true
