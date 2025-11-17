@@ -140,7 +140,7 @@ library(arrow)
 
 
 #Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
-bids <- read_parquet("../data/bids_data_vDTR.parquet") #edit this path to your path to the data file
+bids <- read_parquet("../data/bids_data_vDTR.parquet") 
 glimpse(bids)
 
 ```
