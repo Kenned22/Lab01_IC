@@ -1,0 +1,336 @@
+---
+title: "Lab02: Data Manipulation and Visualization with R"
+author: "TEAM NAME (edit this)"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+# Overview
+
+In this lab, your team will explore the online advertising auctions data.
+Your goals are to:
+
+-   Practice **data manipulation** in R (using tidyverse).
+-   Practice **data visualization** using concepts from the Data Visualization session.
+-   Identify **3–4 data quality issues** that would matter in a real analysis workflow.
+-   Communicate results clearly and professionally as a team.
+
+This lab is designed to take **2–3 hours** of focused collaborative work.
+
+> Today, you are only exploring, visualizing, interpreting, and identifying suspicious looking issues.
+
+------------------------------------------------------------------------
+
+# Git Workflow, Collab, and Use of Generative AI
+
+This is a **team-based exploratory analysis**.
+
+## Git Workflow
+
+-   **One team member** should fork the course lab repository.
+-   In the team’s cloned fork, create the `data/` folder:
+-   That person should **add the rest of the team as collaborators**.
+-   All team members should clone the **same shared fork** (creating an RStudio project).
+
+To keep collaboration smooth:
+
+-   Pull before you start working.
+-   Commit frequently, with clear messages (e.g., "added price histogram", "investigated region codes").
+-   Remember to pull before pushing.
+-   Push your work regularly.
+
+I will review the **Git commit history** to understand who contributed what.
+Individual grades depend on **meaningful contribution** from each student.
+
+## Team Planning (Required)
+
+Before you begin, read the entire lab together (5–10 minutes).
+
+-   Make sure everyone understands the goals, deliverables, and sections.
+
+Decide how to divide the work (3–4 members).
+
+-   As a team, choose a coordinator for each major section, and within sections split the work
+
+    * Section 1: Initial Orientation
+    * Section 2: Data Exploration (dplyr)
+    * Section 3: Visualizations
+    * Section 4: Synthesis & Reflection
+    
+-   Section coordinators will ensure their sections are completed throughout the lab's development
+
+Create a Jira Kanban Board (team facilitator).
+
+-   Go to Jira → Create Project → Kanban template
+
+-   Create a board titled: “Ad Bids Lab – Team <YourTeamName>”
+
+-   Add cards for each task/subtask, including:
+
+    * Task name
+    * Description
+    * Assigned team member
+    * Due date (based on team timeline)
+    
+Upload a screenshot (I'll check the time and date of the file) of the Kanban board.
+
+-   A screenshot showing all initial cards in the To Do column and assignments.
+
+-   Save it in your repository under: `planning/kanban_screenshot.png`
+
+-   Add it **here**.
+
+Make use of the team charter that you designed in Lab01, using the Kanban board throughout the project to keep you on task, correcting issues that arise and readjusting as needed.
+
+
+## Use of Generative AI
+
+You **may** use Gen.AI tools **as support**, not as a replacement.
+
+Appropriate AI uses:
+
+-   Understanding R errors
+-   Asking for explanations of functions & syntax
+-   Debugging when stuck
+-   Checking whether your code is reasonable
+
+Inappropriate uses:
+
+-   Asking AI to complete most or all of the lab
+-   Copying AI-generated code you don’t understand
+-   Using AI to write your interpretations or summaries
+
+Your code and reasoning must reflect **your own team’s understanding**.
+
+------------------------------------------------------------------------
+
+
+# Data and Setup
+
+1.  Each team member should download from Canvas two files in `Modules → ProjectInformation`:
+
+-   `bids_data_vDTR.parquet`
+
+-   A **data dictionary** describing each variable
+
+3.  In your local repo add the data and data dictionary to the `data` folder
+
+4.  Add the data and dictionary file to your .gitignore
+
+5.  Verify that Git is ignoring the files (in the RStudio terminal write `git status` these files should not be listed in the output)
+
+6.  Load `tidyverse`, `ggplot2` and any other packages you find useful (`arrow`, `lubridate`, etc.)
+
+```{r load-data}
+# TODO: Load packages and data here
+# Example structure (adjust paths/names to match the repo):
+# library(tidyverse)
+# library(arrow)
+# bids <- read_parquet("data/bids_data_vDTR.parquet")
+# glimpse(bids)
+```
+
+------------------------------------------------------------------------
+
+# 1. Initial Orientation (10–15 minutes)
+
+Answer the following in complete sentences. Use code chunks to support your answers, but write the answers in prose.
+
+1.  How many rows and columns are in the dataset?
+2.  According to the data dictionary, what does each row represent?
+3.  Which variable(s) are the `key(s)` (i.e., the row identifiers)
+3.  Which variables appear:
+    -   numerical?
+    -   categorical?
+    -   suspicious or inconsistent with the dictionary?
+4.  Name **two variables** you expect to matter most to advertisers and explain why.
+
+*(Write your answers below.)*
+
+------------------------------------------------------------------------
+
+# 2. Data Exploration Using `dplyr` (30–40 minutes)
+
+Use functions you are comfortable with from `dplyr` and `tidyr`.
+Tables and summaries should be created in code chunks; explanations should be written as text.
+
+## 2.1 Geographic Exploration
+
+Explore the geographical fields (such as `DEVICE_GEO_COUNTRY`, `DEVICE_GEO_REGION`, `DEVICE_GEO_CITY`, `DEVICE_GEO_ZIP`).
+
+Tasks:
+
+1.  Create tables with the **top 3 regions** and the **top 10 cities** by count of rows.
+2.  Compare the region codes to what the data dictionary says they should look like.
+3.  Identify **at least one** region code that is clearly suspicious, and explain why.
+
+```{r geo-explore}
+# TODO: your code for geographic exploration
+```
+
+*(Write your interpretation below.)*
+
+------------------------------------------------------------------------
+
+## 2.2 Price Behavior
+
+Study the `PRICE` variable.
+
+Tasks:
+
+1.  Produce numerical summaries of `PRICE` (e.g., min, max, median, selected quantiles).
+2.  Identify implausible price ranges or values and explain why they are implausible.
+3.  Investigate whether suspicious prices seem to cluster by **one** of the following:
+    -   publisher,
+    -   region, **or**
+    -   ZIP code.
+
+Choose only one dimension and describe what you find.
+
+```{r price-explore}
+# TODO: your code for exploring PRICE
+```
+
+*(Write your interpretation below.)*
+
+------------------------------------------------------------------------
+
+## 2.3 Response Time Behavior
+
+Investigate the `RESPONSE_TIME` variable.
+
+Tasks:
+
+1.  Examine its data type and typical values.
+2.  Look for common patterns or prefixes/suffixes in the values.
+3.  Identify an issue that would prevent straightforward numerical analysis.
+
+```{r rt-explore}
+# TODO: your code for exploring RESPONSE_TIME
+```
+
+*(Write your interpretation below.)*
+
+------------------------------------------------------------------------
+
+# 3. Visualization Challenges (45–60 minutes)
+
+Create **three** high-quality visualizations using `ggplot2`.
+
+Each figure must include:
+
+-   A clear and professional title
+-   Labeled axes
+-   A readable theme (e.g., `theme_bw()`, `theme_minimal()`)
+-   Thoughtful design choices (color, faceting, ordering, etc.)
+-   A **3–5 sentence interpretation**
+
+## 3.1 Plot 1 — Distribution of Bid Prices
+
+Create a visualization that reveals:
+
+-   The overall shape of the price distribution
+-   Outliers or impossible values
+-   Any issues you suspect based on the data dictionary
+
+```{r plot-price}
+# TODO: your price distribution plot
+```
+
+*Interpretation (3–5 sentences):*
+
+------------------------------------------------------------------------
+
+## 3.2 Plot 2 — Price by Zip City
+
+Compare a central price measure (mean or median) across cities
+
+Guidance:
+
+-   Be explicit about whether you use mean or median.
+-   Consider sorting cities by the measure you plot.
+-   Highlight any cities whose price behavior appears inconsistent or suspicious.
+
+```{r plot-price-region}
+# TODO: your price-by-region plot
+```
+
+*Interpretation (3–5 sentences):*
+
+------------------------------------------------------------------------
+
+## 3.3 Plot 3 — Analyst’s Choice
+
+Choose a visualization that you believe would be useful to a data science team at an advertising company.
+
+Possible ideas:
+
+-   Auction volume by hour of day
+-   Differences between winning and losing bids
+-   ZIP code irregularities
+-   Response time patterns
+-   Publisher-level differences
+
+Your plot should answer a clear question, and your interpretation should explain what you learned.
+
+```{r plot-analyst-choice}
+# TODO: your analyst's choice plot
+```
+
+*Interpretation (3–5 sentences):*
+
+------------------------------------------------------------------------
+
+# 4. Synthesis & Reporting (20–25 minutes)
+
+## 4.1 Data Quality Issues
+
+Based on your work above, list **3–4** data quality issues you discovered.
+For each issue:
+
+-   Name the affected variable(s).
+-   Describe what the issue is.
+-   Provide evidence (e.g., from a summary, table, or plot).
+-   Suggest one way you would address it in a later **data cleaning** lab.
+
+*(Write your answer here in paragraphs or bullet points.)*
+
+------------------------------------------------------------------------
+
+## 4.2 Implications for Analytics
+
+In 1–2 paragraphs, discuss how the issues you identified could affect:
+
+-   Business decisions,
+-   Reporting to advertisers, and/or
+-   Predictive modeling.
+
+Which issues are most critical to fix before building models, and why?
+
+*(Write your answer here.)*
+
+------------------------------------------------------------------------
+
+## 4.3 Reflection: Tools, Workflow, AI Use
+
+Write 5–8 sentences reflecting on:
+
+-   Which R tools or approaches were most useful in this lab.
+-   What worked well in your Git/gitHub workflow and team collaboration.
+-   One thing you would change next time to improve your process.
+-   Whether and how you used generative AI (if at all), and how it affected your understanding.
+
+*(Write your reflection here.)*
+
