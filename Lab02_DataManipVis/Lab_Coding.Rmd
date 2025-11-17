@@ -64,10 +64,10 @@ Decide how to divide the work (3–4 members).
 
 -   As a team, choose a coordinator for each major section, and within sections split the work
 
-    * Section 1: Initial Orientation
-    * Section 2: Data Exploration (dplyr)
-    * Section 3: Visualizations
-    * Section 4: Synthesis & Reflection
+    * Section 1: Initial Orientation - 
+    * Section 2: Data Exploration (dplyr) - 
+    * Section 3: Visualizations - 
+    * Section 4: Synthesis & Reflection - 
     
 -   Section coordinators will ensure their sections are completed throughout the lab's development
 
@@ -134,12 +134,15 @@ Your code and reasoning must reflect **your own team’s understanding**.
 6.  Load `tidyverse`, `ggplot2` and any other packages you find useful (`arrow`, `lubridate`, etc.)
 
 ```{r load-data}
-# TODO: Load packages and data here
-# Example structure (adjust paths/names to match the repo):
-# library(tidyverse)
-# library(arrow)
-# bids <- read_parquet("data/bids_data_vDTR.parquet")
-# glimpse(bids)
+#Load relevant libraries - update as needed if there are functions you need that are not in existing libraries
+library(tidyverse)
+library(arrow)
+
+
+#Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
+bids <- read_parquet("C:/Users/LillyKennedy/OneDrive - Portland Psychotherapy/Documents/Lab01_IC/data/bids_data_vDTR.parquet") #edit this path to your path to the data file
+glimpse(bids)
+
 ```
 
 ------------------------------------------------------------------------
