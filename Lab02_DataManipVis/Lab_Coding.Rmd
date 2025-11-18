@@ -145,6 +145,7 @@ library(dplyr)
 library(here)
 library(kableExtra)
 library(jsonlite)
+library(knitr)
 ```
 
 
@@ -365,14 +366,17 @@ top_regions <- bids %>%
   count(DEVICE_GEO_REGION, sort = TRUE) %>%
   slice_head(n = 3)
 
-top_regions
+# 
+kable(top_regions, caption = "Top 3 Regions by Count")
 
 # top 10 cities
 top_cities <- bids %>%
   count(DEVICE_GEO_CITY, sort = TRUE) %>%
   slice_head(n = 10)
 
-top_cities
+
+# 
+kable(top_cities, caption = "Top 10 Cities by Count")
 
 ```
 
@@ -380,11 +384,13 @@ top_cities
 2.  Compare the region codes to what the data dictionary says they should look like.
 
 ```{r}
+# check for region validity
 region_format_check <- bids %>%
   mutate(is_valid_region = grepl("^[A-Z]{2}$", DEVICE_GEO_REGION)) %>%
   count(is_valid_region)
 
-region_format_check
+# table
+kable(region_format_check, caption = "Region validity")
 
 ```
 
@@ -399,7 +405,8 @@ suspicious_regions <- bids %>%
   filter(!grepl("^[A-Z]{2}$", DEVICE_GEO_REGION)) %>%
   count(DEVICE_GEO_REGION, sort = TRUE)
 
-suspicious_regions
+# table
+kable(suspicious_regions, caption = "Suspicious regions")
 
 ```
 
@@ -437,7 +444,8 @@ price_summary <- bids %>%
     max      = max(PRICE, na.rm = TRUE)
   )
 
-price_summary
+# table
+kable(price_summary, caption = "Price summary")
 
 ```
 
@@ -466,8 +474,8 @@ Choose only one dimension and describe what you find.
 suspicious_by_region <- implausible_prices %>%
   count(DEVICE_GEO_REGION, sort = TRUE)
 
-suspicious_by_region
-
+# table
+kable(suspicious_by_region, caption = "Price Outlier by Region")
 ```
 
 
@@ -495,8 +503,8 @@ response_overview <- bids %>%
     example_values = paste(unique(RESPONSE_TIME)[1:5], collapse = ", ")
   )
 
-response_overview
-
+# table
+kable(response_overview, caption = "Response overview")
 ```
 
 
@@ -506,9 +514,10 @@ response_overview
 response_patterns <- bids %>%
   mutate(pattern = substr(RESPONSE_TIME, 1, 5)) %>% 
   count(pattern, sort = TRUE) %>%
-  slice_head(n = 10)
+  slice_head(n = 5)
 
-response_patterns
+# table
+kable(response_patterns, caption = "Response petterns")
 
 ```
 
@@ -523,8 +532,8 @@ response_check <- bids %>%
   ) %>%
   count(is_numeric)
 
-response_check
-
+# table
+kable(response_check, caption = "Response check")
 ```
 
 
