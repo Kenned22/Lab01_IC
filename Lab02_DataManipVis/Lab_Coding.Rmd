@@ -422,13 +422,54 @@ Study the `PRICE` variable.
 Tasks:
 
 1.  Produce numerical summaries of `PRICE` (e.g., min, max, median, selected quantiles).
+
+```{r}
+# price summary
+
+price_summary <- bids %>%
+  summarise(
+    min      = min(PRICE, na.rm = TRUE),
+    q1       = quantile(PRICE, 0.25, na.rm = TRUE),
+    median   = median(PRICE, na.rm = TRUE),
+    mean     = mean(PRICE, na.rm = TRUE),
+    q3       = quantile(PRICE, 0.75, na.rm = TRUE),
+    p95      = quantile(PRICE, 0.95, na.rm = TRUE),
+    max      = max(PRICE, na.rm = TRUE)
+  )
+
+price_summary
+
+```
+
 2.  Identify implausible price ranges or values and explain why they are implausible.
+
+```{r}
+# checking implausible price range by data dictionary direction
+
+implausible_prices <- bids %>%
+  filter(PRICE < 0 | PRICE >= 500)
+
+implausible_prices %>% count()
+
+```
+
 3.  Investigate whether suspicious prices seem to cluster by **one** of the following:
     -   publisher,
     -   region, **or**
     -   ZIP code.
 
 Choose only one dimension and describe what you find.
+
+```{r}
+# suspicious prices by region
+
+suspicious_by_region <- implausible_prices %>%
+  count(DEVICE_GEO_REGION, sort = TRUE)
+
+suspicious_by_region
+
+```
+
 
 ```{r price-explore}
 # TODO: your code for exploring PRICE
