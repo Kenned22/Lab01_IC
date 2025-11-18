@@ -216,7 +216,7 @@ complete_bids_df <- function(df) {
 <br>
 
 #### <u>Removing rows with missing values</u> {-}
-<center>**Columns with missing value (na):**</center>
+<center>**Removing rows with missing values**</center>
 ```{r Removing rows with missing values, echo=FALSE}
 
 # identify rows with missing values
@@ -228,16 +228,36 @@ cols_w_na <- data.frame(
   `na count` = colSums(is.na(bids))[colSums(is.na(bids)) > 0]
 )
 
+cat("there are", nrow(missing_bids), "rows with missing values")
+cat("there are", nrow(complete_bids), 
+  "rows with no missing values remaining in the dataset")
+
 kable(cols_w_na)
 
 # overwrite bids to include only complete rows
-bids <- complete_bids
+bids <- complete_bids_df(bids)
 ```
-<br>
+
+
+<center>**Removing duplicate rows**</center>
+```{r Removing duplicate rows, echo=FALSE}
+
+# identify duplicate rows
+bids_duplicate <- bids[duplicated(bids[, !(names(bids) %in% "row_id")]), ]
+bids_unique <- bids[!duplicated(bids[, !(names(bids) %in% "row_id")]), ]
+
+cat("there are", nrow(bids_duplicate), "duplicate rows in the dataset")
+cat("there are", nrow(bids_unique), "unique rows remaining in the dataset")
+
+# overwrite bids to include only unique rows
+bids <- bids_unique
+
+
+```
 
 #### <u>Dataset Type Checking</u> {-}
 Checking column types of the data and comparing to the types provided in data_dictionary.md:
-```{r Data Cleaning, echo=FALSE}
+```{r Data Cleaning}
 
 expected_data_columns <- data.frame(
   column = c(
