@@ -230,8 +230,18 @@ cols_w_na <- data.frame(
   `na count` = colSums(is.na(bids))[colSums(is.na(bids)) > 0]
 )
 
+col_blank_count <- bids %>%
+  # Step 1: Count blanks in each column
+  summarise(across(everything(), ~ sum(. == "", na.rm = TRUE))) %>%
+  # Step 2: Convert from wide to long format (easier to work with)
+  pivot_longer(everything(), names_to = "column", values_to = "blank count")
+  
+# Step 3: Keep only columns that have blanks
+col_w_blank <- col_blank_count %>% filter(`blank count` > 0)
+
+
 cat("there are", nrow(missing_bids), "rows with missing values")
-cat("there are", nrow(complete_bids), 
+cat("there are", nrow(complete_bids),
   "rows with no missing values remaining in the dataset")
 
 kable(cols_w_na)
