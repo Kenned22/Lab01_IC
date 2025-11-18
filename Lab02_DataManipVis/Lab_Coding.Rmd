@@ -235,7 +235,7 @@ col_blank_count <- bids %>%
   summarise(across(everything(), ~ sum(. == "", na.rm = TRUE))) %>%
   # Step 2: Convert from wide to long format (easier to work with)
   pivot_longer(everything(), names_to = "column", values_to = "blank count")
-  
+
 # Step 3: Keep only columns that have blanks
 col_w_blank <- col_blank_count %>% filter(`blank count` > 0)
 
