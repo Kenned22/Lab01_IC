@@ -486,8 +486,47 @@ Investigate the `RESPONSE_TIME` variable.
 Tasks:
 
 1.  Examine its data type and typical values.
+
+```{r}
+
+response_overview <- bids %>%
+  summarise(
+    data_type = class(RESPONSE_TIME),
+    example_values = paste(unique(RESPONSE_TIME)[1:5], collapse = ", ")
+  )
+
+response_overview
+
+```
+
+
 2.  Look for common patterns or prefixes/suffixes in the values.
+
+```{r}
+response_patterns <- bids %>%
+  mutate(pattern = substr(RESPONSE_TIME, 1, 5)) %>% 
+  count(pattern, sort = TRUE) %>%
+  slice_head(n = 10)
+
+response_patterns
+
+```
+
+
 3.  Identify an issue that would prevent straightforward numerical analysis.
+
+```{r}
+response_check <- bids %>%
+  mutate(
+    numeric_attempt = suppressWarnings(as.numeric(RESPONSE_TIME)),
+    is_numeric = !is.na(numeric_attempt)
+  ) %>%
+  count(is_numeric)
+
+response_check
+
+```
+
 
 ```{r rt-explore}
 # TODO: your code for exploring RESPONSE_TIME
