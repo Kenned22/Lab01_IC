@@ -366,7 +366,7 @@ top_regions <- bids %>%
   count(DEVICE_GEO_REGION, sort = TRUE) %>%
   slice_head(n = 3)
 
-# 
+# print table
 kable(top_regions, caption = "Top 3 Regions by Count")
 
 # top 10 cities
@@ -375,7 +375,7 @@ top_cities <- bids %>%
   slice_head(n = 10)
 
 
-# 
+# print table
 kable(top_cities, caption = "Top 10 Cities by Count")
 
 ```
@@ -394,13 +394,10 @@ kable(region_format_check, caption = "Region validity")
 
 ```
 
-#### Summary
-
-Most of the region codes in the dataset look correct, but about a quarter of all rows (104325) don’t follow the expected two-letter state format. There is a possiblity of misclassified, or inconsistent recording.
-
 3.  Identify **at least one** region code that is clearly suspicious, and explain why.
 
 ```{r}
+# check format of region
 suspicious_regions <- bids %>%
   filter(!grepl("^[A-Z]{2}$", DEVICE_GEO_REGION)) %>%
   count(DEVICE_GEO_REGION, sort = TRUE)
@@ -410,15 +407,13 @@ kable(suspicious_regions, caption = "Suspicious regions")
 
 ```
 
-#### Summary
-
-Suspicious regions code found in the dataset are "Or", "oregon", and "xor". They are not two-letter U.S. state code and therefore violates the format defined by the Prebid Data Dictionary. They are likely representing different names for Oregon
-
 ```{r geo-explore}
 # TODO: your code for geographic exploration
 ```
 
 *(Write your interpretation below.)*
+
+Most of the region codes in the dataset look correct, but about a quarter of all rows (104,325) do not follow the expected two-letter state format. This suggests there may be misclassified or inconsistently recorded entries. Many of the top ten cities also appear to be large cities in Oregon, which aligns with the pattern seen in the region field. Suspicious region codes such as “Or,” “oregon,” and “xor” show up in the data; these are not valid two-letter U.S. state codes under the Prebid Data Dictionary and likely represent inconsistent ways of referring to Oregon.
 
 ------------------------------------------------------------------------
 
@@ -457,7 +452,10 @@ kable(price_summary, caption = "Price summary")
 implausible_prices <- bids %>%
   filter(PRICE < 0 | PRICE >= 500)
 
-implausible_prices %>% count()
+# Count implausible price values
+implausible_count <- implausible_prices %>% count()
+cat("Total number of out-of-bound PRICE values =", implausible_count$n, "\n")
+
 
 ```
 
@@ -485,6 +483,10 @@ kable(suspicious_by_region, caption = "Price Outlier by Region")
 
 *(Write your interpretation below.)*
 
+The price distribution ranges from –999 to 115.13, with a median of 0.20 and most values concentrated toward the lower end. While many prices appear reasonable, the presence of negative values and unusually high spikes indicates some data quality issues. Using the data dictionary rule that prices must fall between 0 and 500, there are 105 values that fall outside this range.
+
+When checking distribution of this anomaly recorded under several different names. The most common entries are “OR” (76), followed by “Or” (16), “oregon” (9), and “xor” (4). 
+
 ------------------------------------------------------------------------
 
 ## 2.3 Response Time Behavior
@@ -496,7 +498,7 @@ Tasks:
 1.  Examine its data type and typical values.
 
 ```{r}
-
+# check response time class
 response_overview <- bids %>%
   summarise(
     data_type = class(RESPONSE_TIME),
@@ -511,13 +513,14 @@ kable(response_overview, caption = "Response overview")
 2.  Look for common patterns or prefixes/suffixes in the values.
 
 ```{r}
+# group by time patterns 
 response_patterns <- bids %>%
   mutate(pattern = substr(RESPONSE_TIME, 1, 5)) %>% 
   count(pattern, sort = TRUE) %>%
   slice_head(n = 5)
 
 # table
-kable(response_patterns, caption = "Response petterns")
+kable(response_patterns, caption = "Response patterns")
 
 ```
 
@@ -525,6 +528,7 @@ kable(response_patterns, caption = "Response petterns")
 3.  Identify an issue that would prevent straightforward numerical analysis.
 
 ```{r}
+# check how many can be converted to numeric
 response_check <- bids %>%
   mutate(
     numeric_attempt = suppressWarnings(as.numeric(RESPONSE_TIME)),
@@ -542,6 +546,10 @@ kable(response_check, caption = "Response check")
 ```
 
 *(Write your interpretation below.)*
+
+Before cleaning, the RESPONSE_TIME field was stored as text, even though the values looked like numbers—for example, entries appeared in formats such as “RESPONSE TIME: 234”. Because of this extra wording, the values could not be treated as numeric, which made it difficult to summarize or analyze response times in a meaningful way.
+
+After cleaning, the extra text was removed and the remaining values were converted into proper numbers. Once in numerical form, the response times showed a clean and consistent distribution with no unusual values or anomalies. This confirms that the original issue was purely formatting-related rather than a problem with the underlying data itself.
 
 ------------------------------------------------------------------------
 
