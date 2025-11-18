@@ -135,19 +135,24 @@ Your code and reasoning must reflect **your own team’s understanding**.
 
 6.  Load `tidyverse`, `ggplot2` and any other packages you find useful (`arrow`, `lubridate`, etc.)
 
-```{r load-data}
+```{r load-data, echo=FALSE}
 #Load relevant libraries - update as needed if there are functions you need that are not in existing libraries
 library(tidyverse)
 library(arrow)
-
-print(getwd())
+library(glue)
+library(knitr)
+library(dplyr)
+library(here)
+library(kableExtra)
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 
 #Load and view data - every person make sure you have the data uploaded yourself and added to git ignore
-bids <- read_parquet("../data/bids_data_vDTR.parquet")
+
+original_bids <- read_parquet(here("data", "bids_data_vDTR.parquet"))
+bids <- original_bids %>% mutate(row_id = row_number())
 glimpse(bids)
 
 ```
@@ -168,6 +173,114 @@ Answer the following in complete sentences. Use code chunks to support your answ
 4.  Name **two variables** you expect to matter most to advertisers and explain why.
 
 *(Write your answers below.)*
+------------------------------------------------------------------------
+### Dataset Cleaning {-}
+```{r Data Cleaning Functions, echo=FALSE}
+col_diff <- function(df, expected_columns) {
+  setdiff(expected_columns$column, colnames(df))
+}
+
+col_common <- function(df, expected_columns) {
+  intersect(colnames(df), expected_columns$column)
+}
+
+col_type_check <- function(bid_df, expected_columns) {
+  common_columns <- col_common(bid_df, expected_columns)
+  
+  bid_col_types <- sapply(bid_df, function(x) class(x)[1])
+  
+  # Need to do this to ensure order of rows is correct
+  expected_types <- tibble(column = common_columns) %>%
+    left_join(expected_columns, by = "column") %>%
+    pull("Expected_Type") %>%
+    unname()
+  
+  col_type_comp <- expected_types == bid_col_types[common_columns]
+  
+  comparison <- tibble(column = common_columns) %>%
+    mutate(actual = bid_col_types[common_columns]) %>%
+    left_join(expected_columns, by = "column") %>%
+    mutate(match = col_type_comp, .before = "Notes_Actual_Type")
+  
+  comparison
+}
+
+missing_bids_df <- function(df) {
+  df[!complete.cases(df), ]
+}
+
+complete_bids_df <- function(df) {
+  df[complete.cases(df), ]
+}
+```
+<br>
+
+#### <u>Removing rows with missing values</u> {-}
+<center>**Columns with missing value (na):**</center>
+```{r Removing rows with missing values, echo=FALSE}
+
+# identify rows with missing values
+
+missing_bids <- missing_bids_df(bids)
+complete_bids <- complete_bids_df(bids)
+
+cols_w_na <- data.frame(
+  `na count` = colSums(is.na(bids))[colSums(is.na(bids)) > 0]
+)
+
+kable(cols_w_na)
+
+# overwrite bids to include only complete rows
+bids <- complete_bids
+```
+<br>
+
+#### <u>Dataset Type Checking</u> {-}
+Checking column types of the data and comparing to the types provided in data_dictionary.md:
+```{r Data Cleaning, echo=FALSE}
+
+expected_data_columns <- data.frame(
+  column = c(
+    "TIMESTAMP", "DATE_UTC", "AUCTION_ID", "PUBLISHER_ID", 
+    "DEVICE_TYPE", "DEVICE_GEO_COUNTRY", "DEVICE_GEO_REGION",
+    "DEVICE_GEO_CITY", "DEVICE_GEO_ZIP", "DEVICE_GEO_LAT", 
+    "DEVICE_GEO_LONG", "REQUESTED_SIZES", "SIZE", "PRICE",
+    "RESPONSE_TIME", "BID_WON"
+  ),
+  Expected_Type = c(
+    "POSIXct", "Date", "character", "character", "character",
+    "character", "character", "character", "character", "numeric",
+    "numeric", "list", "character", "numeric", "integer", "logical"
+  ),
+  Notes_Actual_Type = c(
+    "TIMESTAMP_NTZ", "DATE", "VARCHAR", "VARCHAR", "VARCHAR",
+    "VARCHAR(2)", "VARCHAR(2)", "VARCHAR", "VARCHAR(10)", "FLOAT",
+    "FLOAT", "VARCHAR (or ARRAY)", "VARCHAR", "NUMBER(12,6)",
+    "NUMBER(10,0)", "BOOLEAN"
+  ),
+  stringsAsFactors = FALSE
+)
+
+missing_columns <- col_diff(bids, expected_data_columns)
+comparison <- col_type_check(bids, expected_data_columns)
+
+```
+<br>
+<center>**Missing columns:**</center>
+`r paste0(seq_along(missing_columns), ". ", missing_columns, collapse = "<br>")`
+<br>
+<br>
+
+<center>**Summary of column types**</center>
+```{r, echo=FALSE}
+comparison %>% 
+  kable("html", escape = FALSE, align = c("l", rep("c", ncol(comparison) - 1))) %>%
+  row_spec(which(!comparison$match), background = "#62ec0001") %>%
+  column_spec(seq_len(ncol(comparison)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
+  kable_styling(full_width = FALSE)
+```
+
+
 
 ------------------------------------------------------------------------
 
