@@ -312,9 +312,6 @@ bids$DATE_UTC <- as.Date(bids$DATE_UTC, format = "%Y-%m-%d")
 # Convert DEVICE_TYPE from integer to character
 bids$DEVICE_TYPE <- as.character(bids$DEVICE_TYPE)
 
-```
-
-```{r}
 # convert PRICE from character to numeric
 bids$PRICE <- as.numeric(bids$PRICE)
 
@@ -323,11 +320,8 @@ bids$REQUESTED_SIZES <- lapply(bids$REQUESTED_SIZES, fromJSON)
 
 # get all unique sized in requested sizes
 sizes <- unique(unlist(bids$REQUESTED_SIZES))
-tibble(sizes)
-```
+glue("there are , {length(sizes)}, unique REQUESTED_SIZES")
 
-
-```{r}
 # convert RESPONSE_TIME from character to Integer
   # gsub() = global substitution.
   # It finds all matches of pattern in x and replaces them with replacement.
