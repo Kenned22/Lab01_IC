@@ -357,8 +357,55 @@ Explore the geographical fields (such as `DEVICE_GEO_COUNTRY`, `DEVICE_GEO_REGIO
 Tasks:
 
 1.  Create tables with the **top 3 regions** and the **top 10 cities** by count of rows.
+
+```{r}
+# top 3 regions by zip code
+
+top_regions <- bids %>%
+  count(DEVICE_GEO_REGION, sort = TRUE) %>%
+  slice_head(n = 3)
+
+top_regions
+
+# top 10 cities
+top_cities <- bids %>%
+  count(DEVICE_GEO_CITY, sort = TRUE) %>%
+  slice_head(n = 10)
+
+top_cities
+
+```
+
+
 2.  Compare the region codes to what the data dictionary says they should look like.
+
+```{r}
+region_format_check <- bids %>%
+  mutate(is_valid_region = grepl("^[A-Z]{2}$", DEVICE_GEO_REGION)) %>%
+  count(is_valid_region)
+
+region_format_check
+
+```
+
+#### Summary
+
+Most of the region codes in the dataset look correct, but about a quarter of all rows (104325) don’t follow the expected two-letter state format. There is a possiblity of misclassified, or inconsistent recording.
+
 3.  Identify **at least one** region code that is clearly suspicious, and explain why.
+
+```{r}
+suspicious_regions <- bids %>%
+  filter(!grepl("^[A-Z]{2}$", DEVICE_GEO_REGION)) %>%
+  count(DEVICE_GEO_REGION, sort = TRUE)
+
+suspicious_regions
+
+```
+
+#### Summary
+
+Suspicious regions code found in the dataset are "Or", "oregon", and "xor". They are not two-letter U.S. state code and therefore violates the format defined by the Prebid Data Dictionary. They are likely representing different names for Oregon
 
 ```{r geo-explore}
 # TODO: your code for geographic exploration
