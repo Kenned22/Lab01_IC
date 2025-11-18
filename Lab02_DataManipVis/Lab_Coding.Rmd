@@ -144,6 +144,7 @@ library(knitr)
 library(dplyr)
 library(here)
 library(kableExtra)
+library(jsonlite)
 ```
 
 
@@ -257,7 +258,7 @@ bids <- bids_unique
 
 #### <u>Dataset Type Checking</u> {-}
 Checking column types of the data and comparing to the types provided in data_dictionary.md:
-```{r Data Cleaning}
+```{r Data Cleaning, echo=FALSE}
 
 expected_data_columns <- data.frame(
   column = c(
@@ -298,10 +299,56 @@ comparison %>%
   row_spec(which(!comparison$match), background = "#62ec0001") %>%
   column_spec(seq_len(ncol(comparison)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
   kable_styling(full_width = FALSE)
+
+cat("Converting columns to the expected types")
+cat("\n")
+
+# Convert TIMESTAMP from character to TIMESTAMP_NTZ (POSIXct)
+bids$TIMESTAMP <- as.POSIXct(bids$TIMESTAMP, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+
+# Convert DATE_UTC from character to Date (YYYY-MM-DD)
+bids$DATE_UTC <- as.Date(bids$DATE_UTC, format = "%Y-%m-%d")
+
+# Convert DEVICE_TYPE from integer to character
+bids$DEVICE_TYPE <- as.character(bids$DEVICE_TYPE)
+
+```
+
+```{r}
+# convert PRICE from character to numeric
+bids$PRICE <- as.numeric(bids$PRICE)
+
+# convert REQUESTED_SIZES from character to list
+bids$REQUESTED_SIZES <- lapply(bids$REQUESTED_SIZES, fromJSON)
+
+# get all unique sized in requested sizes
+sizes <- unique(unlist(bids$REQUESTED_SIZES))
+tibble(sizes)
 ```
 
 
+```{r}
+# convert RESPONSE_TIME from character to Integer
+  # gsub() = global substitution.
+  # It finds all matches of pattern in x and replaces them with replacement.
+  # [0-9] means “a digit from 0 to 9”
+  # ^ inside brackets means NOT
+  # [^0-9]  means: "anything that is NOT a digit"
+  # "" means: "replace with nothing"
+bids$RESPONSE_TIME <- gsub("[^0-9]", "", bids$RESPONSE_TIME)
+bids$RESPONSE_TIME <- as.integer(bids$RESPONSE_TIME)
 
+# convert BID_WON from character to Logical
+bids$BID_WON <- as.logical(bids$BID_WON)
+
+
+comparison <- col_type_check(bids, expected_data_columns)
+if (any(!comparison$match)) {
+  cat("There are columns that do not match the expected types")
+} else {
+  cat("All columns match the expected types")
+}
+```
 ------------------------------------------------------------------------
 
 # 2. Data Exploration Using `dplyr` (30–40 minutes)
