@@ -621,9 +621,6 @@ Guidance:
 ```{r plot-price-region}
 # TODO: your price-by-region plot
 
-library(ggplot2)
-library(dplyr)
-
 city_medians <- bids %>%
   filter(!is.na(PRICE), PRICE >= 0) %>%
   group_by(DEVICE_GEO_CITY) %>%
