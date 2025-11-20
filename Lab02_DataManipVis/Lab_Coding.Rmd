@@ -584,9 +584,29 @@ Create a visualization that reveals:
 
 ```{r plot-price}
 # TODO: your price distribution plot
+
+library(ggplot2)
+library(dplyr)
+
+# Filter to only valid, normal price range
+normal_bids <- bids %>%
+  filter(!is.na(PRICE), PRICE >= 0, PRICE <= 5)
+
+# Plot histogram
+ggplot(normal_bids, aes(x = PRICE)) +
+  geom_histogram(binwidth = 0.1, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of Normal Bid Prices (0–5 USD)",
+    x = "Price (USD)",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+
 ```
 
 *Interpretation (3–5 sentences):*
+This histogram visualizes the distribution of valid bid prices ranging from 0 to 5 USD. The majority of bids are concentrated below $1, with a noticeable peak around $0.20, indicating a strong skew toward lower prices. We chose to exclude outliers (e.g., prices above $5) and invalid entries (e.g., negative values like –999) because they are rare and would distort the scale of the plot, making it harder to interpret the meaningful patterns in the bulk of the data. By filtering to a reasonable range, we can clearly observe the common pricing behavior used in the majority of auctions. This cleaned view provides more accurate insights for understanding typical bidding trends.
 
 ------------------------------------------------------------------------
 
