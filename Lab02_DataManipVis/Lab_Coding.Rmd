@@ -646,13 +646,7 @@ ggplot(city_medians, aes(x = reorder(DEVICE_GEO_CITY, median_price), y = median_
 
 *Interpretation (3–5 sentences):*
 
-This bar chart displays the median bid price across the top 15 cities with the highest individual median prices. We
-chose to use the median rather than the mean to reduce the influence of outliers and provide a more accurate
-representation of typical bid values in each city. The cities are sorted by descending median price, making it easier
-to spot unusually high values. Several cities near the top, such as White City, Drewsey, and Columbia City, show
-unexpectedly high median prices; but also have very low bid counts (1 or 4 bids), which may not provide reliable
-estimates. These small sample sizes suggest potential data quality issues or artifacts, and such entries should be
-treated cautiously in any modeling or reporting efforts.
+This bar chart displays the median bid price across the top 15 cities with the highest individual median prices since looking at all of the cities was far too overwhelming. We chose to use the median rather than the mean to reduce the influence of outliers and provide a more accurate representation of typical bid values in each city. The cities are sorted by descending median price, making it easier to spot unusually high values. Several cities near the top, such as White City, Drewsey, and Columbia City, show unexpectedly high median prices; but also have very low bid counts (1 or 4 bids), which may not provide reliable estimates. These small sample sizes suggest potential data quality issues or artifacts, and such entries should be treated cautiously in any modeling or reporting efforts.
 
 ------------------------------------------------------------------------
 
@@ -672,9 +666,26 @@ Your plot should answer a clear question, and your interpretation should explain
 
 ```{r plot-analyst-choice}
 # TODO: your analyst's choice plot
+
+bids %>%
+  filter(!is.na(PRICE), !is.na(BID_WON)) %>%
+  mutate(BID_WON = ifelse(BID_WON, "Won", "Lost")) %>%
+  ggplot(aes(x = BID_WON, y = PRICE, fill = BID_WON)) +
+  geom_boxplot(outlier.shape = NA, width = 0.5) +
+  coord_cartesian(ylim = c(0, 5)) +  
+  labs(
+    title = "Bid Price Comparison: Won vs Lost Bids",
+    x = "Bid Outcome",
+    y = "Bid Price (USD)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
 ```
 
 *Interpretation (3–5 sentences):*
+
+This boxplot is looking at the distribution of bid prices between bids that won and lost, using only the values within the most common 0-5 USD range. We chose a boxplot because it clearly shows medians, variability, and differences between groups; making it easy to compare central tendencies and spread. The plot reveals that winning bids tend to be slightly higher in price, with fewer extremely low values compared to losing bids. This analysis is especially useful for a data science team in advertising, as it can inform optimal pricing strategies and help identify the minimum price threshold needed to remain competitive. Understanding these bid patterns enables teams to increase win rates while avoiding overspending.
 
 ------------------------------------------------------------------------
 
