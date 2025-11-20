@@ -588,11 +588,9 @@ Create a visualization that reveals:
 library(ggplot2)
 library(dplyr)
 
-# Filter to only valid, normal price range
 normal_bids <- bids %>%
   filter(!is.na(PRICE), PRICE >= 0, PRICE <= 5)
 
-# Plot histogram
 ggplot(normal_bids, aes(x = PRICE)) +
   geom_histogram(binwidth = 0.1, fill = "steelblue", color = "white") +
   labs(
@@ -622,9 +620,42 @@ Guidance:
 
 ```{r plot-price-region}
 # TODO: your price-by-region plot
+
+library(ggplot2)
+library(dplyr)
+
+city_medians <- bids %>%
+  filter(!is.na(PRICE), PRICE >= 0) %>%
+  group_by(DEVICE_GEO_CITY) %>%
+  summarise(
+    n = n(),
+    median_price = median(PRICE)
+  ) %>%
+  arrange(desc(median_price)) %>%
+  slice_head(n = 15)
+
+ggplot(city_medians, aes(x = reorder(DEVICE_GEO_CITY, median_price), y = median_price)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(
+    title = "Top 15 Cities by Median Bid Price",
+    x = "City",
+    y = "Median Price (USD)"
+  ) +
+  theme_bw()
+
+
 ```
 
 *Interpretation (3–5 sentences):*
+
+This bar chart displays the median bid price across the top 15 cities with the highest individual median prices. We
+chose to use the median rather than the mean to reduce the influence of outliers and provide a more accurate
+representation of typical bid values in each city. The cities are sorted by descending median price, making it easier
+to spot unusually high values. Several cities near the top, such as White City, Drewsey, and Columbia City, show
+unexpectedly high median prices; but also have very low bid counts (1 or 4 bids), which may not provide reliable
+estimates. These small sample sizes suggest potential data quality issues or artifacts, and such entries should be
+treated cautiously in any modeling or reporting efforts.
 
 ------------------------------------------------------------------------
 
