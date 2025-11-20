@@ -702,25 +702,20 @@ For each issue:
 -   Suggest one way you would address it in a later **data cleaning** lab.
 
 *1. Invalid or Inconsistent Region Codes*
-
-Affected Variable: DEVICE_SEQ_REGION
-Issue: Many entries do not follow the standard two-letter U.S. state postal codes (e.g., “Or,” “oregon,” “xor”).
-
-Evidence: Checking how many different text values in the DEVICE_GEO_REGION variable.
+*Affected Variable: DEVICE_SEQ_REGION*
+*Issue: Many entries do not follow the standard two-letter U.S. state postal codes (e.g., “Or,” “oregon,” “xor”).*
+*Evidence: Checking how many different text values in the DEVICE_GEO_REGION variable.*
 ```{r}
 unique_regions <- unique(original_bids$DEVICE_GEO_REGION)
 unique_regions
 ```
-
-Cleaning Suggestion: Standardize region values by mapping common misspellings and variations to valid USPS codes (e.g., “oregon” → “OR”, “Or” → “OR”). Invalid or unmappable entries could be set to NULL or flagged.
+*Cleaning Suggestion: Standardize region values by mapping common misspellings and variations to valid USPS codes (e.g., “oregon” → “OR”, “Or” → “OR”). Invalid or unmappable entries could be set to NULL or flagged.*
 
 
 *2. Price Values Outside Valid Range*
-Affected Variable: PRICE
-
-Issue: Some prices are out of the range between 0 and 500.
-
-Evidence: Checking the minimum and maximum of price
+*Affected Variable: PRICE*
+*Issue: Some prices are out of the range between 0 and 500.*
+*Evidence: Checking the minimum and maximum of price*
 ```{r}
 price_min_max <- bids %>%
   summarise(
@@ -731,22 +726,18 @@ price_min_max <- bids %>%
 # table
 kable(price_min_max, caption = "Min and Max Price")
 ```
-
-Cleaning Suggestion: Filter out or cap values outside the [0, 500] range, or treat them as NULL if they are not usable for analysis.
+*Cleaning Suggestion: Filter out or cap values outside the [0, 500] range, or treat them as NULL if they are not usable for analysis.*
 
 
 *3. Incorrect Data Type for Response Time*
-Affected Variable: RESPONSE_TIME
-
-Issue: The field was stored as text with extraneous wording (e.g., “RESPONSE TIME: 234”), preventing numerical analysis.
-
-Evidence:
+*Affected Variable: RESPONSE_TIME*
+*Issue: The field was stored as text with extraneous wording (e.g., “RESPONSE TIME: 234”), preventing numerical analysis.*
+*Evidence:Checking data type of RESPONSE_TIME*
 ```{r}
 head(original_bids$RESPONSE_TIME, 10)
 class(original_bids$RESPONSE_TIME)
 ```
-
-Cleaning Suggestion: Use string parsing (e.g., REGEXP_SUBSTR) to extract numeric values and convert the column to a numeric type (e.g., NUMBER).
+*Cleaning Suggestion: Use string parsing (e.g., REGEXP_SUBSTR) to extract numeric values and convert the column to a numeric type (e.g., NUMBER).*
 
 ------------------------------------------------------------------------
 
