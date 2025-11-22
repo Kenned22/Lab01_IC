@@ -570,6 +570,7 @@ kable(price_summary, caption = "Price summary")
 2.  Identify implausible price ranges or values and explain why they are
     implausible.
 
+<!-- # NOTE: We may want to change the max price that is considered implausible. Probably based on the std of the price data? 500 seems high when the mean is 0.45? Even though the data dict says 500 is the high? -->
 ```{r}
 # checking implausible price range by data dictionary direction
 
