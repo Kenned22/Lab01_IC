@@ -68,7 +68,7 @@ Decide how to divide the work (3–4 members).
     * Section 2: Data Exploration (dplyr) - Edwin
     * Section 3: Visualizations - Lilly
     * Section 4: Synthesis & Reflection - Bingtang
-    
+
 -   Section coordinators will ensure their sections are completed throughout the lab's development
 
 Create a Jira Kanban Board (team facilitator).
@@ -83,7 +83,7 @@ Create a Jira Kanban Board (team facilitator).
     * Description
     * Assigned team member
     * Due date (based on team timeline)
-    
+
 Upload a screenshot (I'll check the time and date of the file) of the Kanban board.
 
 -   A screenshot showing all initial cards in the To Do column and assignments.
@@ -188,22 +188,22 @@ col_common <- function(df, expected_columns) {
 
 col_type_check <- function(bid_df, expected_columns) {
   common_columns <- col_common(bid_df, expected_columns)
-  
+
   bid_col_types <- sapply(bid_df, function(x) class(x)[1])
-  
+
   # Need to do this to ensure order of rows is correct
   expected_types <- tibble(column = common_columns) %>%
     left_join(expected_columns, by = "column") %>%
     pull("Expected_Type") %>%
     unname()
-  
+
   col_type_comp <- expected_types == bid_col_types[common_columns]
-  
+
   comparison <- tibble(column = common_columns) %>%
     mutate(actual = bid_col_types[common_columns]) %>%
     left_join(expected_columns, by = "column") %>%
     mutate(match = col_type_comp, .before = "Notes_Actual_Type")
-  
+
   comparison
 }
 
@@ -273,9 +273,9 @@ Checking column types of the data and comparing to the types provided in data_di
 
 expected_data_columns <- data.frame(
   column = c(
-    "TIMESTAMP", "DATE_UTC", "AUCTION_ID", "PUBLISHER_ID", 
+    "TIMESTAMP", "DATE_UTC", "AUCTION_ID", "PUBLISHER_ID",
     "DEVICE_TYPE", "DEVICE_GEO_COUNTRY", "DEVICE_GEO_REGION",
-    "DEVICE_GEO_CITY", "DEVICE_GEO_ZIP", "DEVICE_GEO_LAT", 
+    "DEVICE_GEO_CITY", "DEVICE_GEO_ZIP", "DEVICE_GEO_LAT",
     "DEVICE_GEO_LONG", "REQUESTED_SIZES", "SIZE", "PRICE",
     "RESPONSE_TIME", "BID_WON"
   ),
@@ -305,7 +305,7 @@ comparison <- col_type_check(bids, expected_data_columns)
 
 <center>**Summary of column types**</center>
 ```{r, echo=FALSE}
-comparison %>% 
+comparison %>%
   kable("html", escape = FALSE, align = c("l", rep("c", ncol(comparison) - 1))) %>%
   row_spec(which(!comparison$match), background = "#62ec0001") %>%
   column_spec(seq_len(ncol(comparison)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
@@ -495,7 +495,7 @@ kable(suspicious_by_region, caption = "Price Outlier by Region")
 
 The price distribution ranges from –999 to 115.13, with a median of 0.20 and most values concentrated toward the lower end. While many prices appear reasonable, the presence of negative values and unusually high spikes indicates some data quality issues. Using the data dictionary rule that prices must fall between 0 and 500, there are 105 values that fall outside this range.
 
-When checking distribution of this anomaly recorded under several different names. The most common entries are “OR” (76), followed by “Or” (16), “oregon” (9), and “xor” (4). 
+When checking distribution of this anomaly recorded under several different names. The most common entries are “OR” (76), followed by “Or” (16), “oregon” (9), and “xor” (4).
 
 ------------------------------------------------------------------------
 
@@ -523,9 +523,9 @@ kable(response_overview, caption = "Response overview")
 2.  Look for common patterns or prefixes/suffixes in the values.
 
 ```{r}
-# group by time patterns 
+# group by time patterns
 response_patterns <- bids %>%
-  mutate(pattern = substr(RESPONSE_TIME, 1, 5)) %>% 
+  mutate(pattern = substr(RESPONSE_TIME, 1, 5)) %>%
   count(pattern, sort = TRUE) %>%
   slice_head(n = 5)
 
