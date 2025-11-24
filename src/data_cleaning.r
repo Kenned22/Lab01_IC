@@ -1,5 +1,8 @@
 library(logger)
 library(glue)
+library(dplyr)
+library(tidyverse)
+library(tictoc)
 log_appender(appender_tee("logs/data_cleaning.log"))
 
 
@@ -42,10 +45,11 @@ column_check <- function(df, expected_columns) {
 #'   Expected_Type = c("numeric", "character", "logical")
 #' )
 #' result <- check_column_types(my_df, expected)
-type_check <- function(df, expected_types) {
-  # Validate expected_types structure
+type_check_summary <- function(df, expected_types) {
+  #Most of this code is hard coded and specific to the expected_types format.
+  #Will look to make more flexible later.
 
-  #THIS IS HARDCODED FOR NOW, EXPECTING SPECIFIC FORMAT OF expected_types, WILL MAKE MORE FLEXIBLE LATER
+  # Validate expected_types structure
   if (is.null(expected_types$column) || length(expected_types$column) == 0) {
     stop("expected_types must be a named vector/list with column names as names and types as values.\n",
          "Example: c(age = 'numeric', name = 'character')")
@@ -61,20 +65,12 @@ type_check <- function(df, expected_types) {
   # Find common columns between df and expected_types
   common_cols <- intersect(names(df), expected_types$column)
 
-  temp_comparison <- tibble(column = common_cols) %>%
-    left_join(expected_types, by = "column") %>%
-    pull("Expected_Type") %>%
-    unname()
+  # Create comparison data frame for common columns only and add actual column types
+  type_check_df <- expected_types %>%
+    filter(.data$column %in% common_cols) %>%
+    mutate(actual = df_types[.data$column], .before = "Expected_Type")
 
-  col_type_comp <- temp_comparison == df_types[common_cols]
-
-  # Create comparison data frame for common columns only
-  comparison <- tibble(column = common_cols) %>%
-    mutate(actual = df_types[common_cols]) %>%
-    left_join(expected_types, by = "column") %>%
-    mutate(match = col_type_comp, .before = "Notes_Actual_Type")
-
-  comparison
+  type_check_df
 }
 
 col_na_check <- function(df) {
@@ -83,7 +79,59 @@ col_na_check <- function(df) {
 }
 
 get_na_row_indices <- function(df) {
-  which(apply(df, 1, function(x) any(is.na(x))))
+  # complete.cases returns true if all rows are complete, false if any row is incomplete (i.e. has NA)
+  which(!complete.cases(df))
+}
+
+na_check <- function(df) {
+  # Can uncomment code below to time functions
+  # tic("NA Check")
+  # col_na_counts <- col_na_check(df)
+  # toc()
+  # tic("NA Row Indices")
+  # na_row_indices <- get_na_row_indices(df)
+  # toc()
+  col_na_counts <- col_na_check(df)
+  na_row_indices <- get_na_row_indices(df)
+  list(col_na_counts = col_na_counts, na_row_indices = na_row_indices)
+}
+
+col_blank_check <- function(df) {
+  # Could use tidyverse approach or sapply to all cols. Current way is faster since it only checks character cols
+  # blank_counts <- df %>% summarise(across(everything(), ~ sum(. == "", na.rm = TRUE)))
+  # blank_counts <- sapply(df, function(col) sum(col == "", na.rm = TRUE))
+
+  blank_counts <- sapply(df, function(col) {
+    if (is.character(col)) {
+      sum(col == "", na.rm = TRUE)
+    } else {
+      0
+    }
+  })
+
+  blank_counts
+}
+
+get_blank_row_indices <- function(df) {
+  indices <- df %>%
+    mutate(row_id = row_number()) %>%
+    filter(if_any(where(is.character), ~ . == "")) %>%
+    pull(.data$row_id)
+  indices
+}
+
+blank_check <- function(df) {
+  # Can uncomment code below to time functions
+  # tic("Blank counts")
+  # blank_counts <- col_blank_check(df)
+  # toc()
+  # tic("Blank row indices")
+  # blank_row_indices <- get_blank_row_indices(df)
+  # toc()
+
+  blank_counts <- col_blank_check(df)
+  blank_row_indices <- get_blank_row_indices(df)
+  list(blank_counts = blank_counts, blank_row_indices = blank_row_indices)
 }
 
 #' Get type conversion function for a given type name
@@ -94,7 +142,7 @@ get_na_row_indices <- function(df) {
 #' @examples
 #' converter <- get_type_converter("numeric")
 #' result <- converter("123")  # Returns 123
-type_conversion <- function(target_type) {
+get_type_func <- function(target_type) {
   converters <- list(
     character = as.character,
     numeric = as.numeric,
@@ -129,11 +177,13 @@ type_conversion <- function(df, col_name, target_type) {
 }
 
 
-col_blank_count <- bids %>%
-  # Step 1: Count blanks in each column
-  summarise(across(everything(), ~ sum(. == "", na.rm = TRUE))) %>%
-  # Step 2: Convert from wide to long format (easier to work with)
-  pivot_longer(everything(), names_to = "column", values_to = "blank count")
+# col_blank_count <- bids %>% summarise(across(everything(), ~ sum(. == "", na.rm = TRUE))) %>%
+#   pivot_longer(everything(), names_to = "column", values_to = "blank count")
+
+  # # Step 1: Count blanks in each column
+  # summarise(across(everything(), ~ sum(. == "", na.rm = TRUE))) %>%
+  # # Step 2: Convert from wide to long format (easier to work with)
+  # pivot_longer(everything(), names_to = "column", values_to = "blank count")
 
 
 #' Check for blank/empty strings in a dataframe
@@ -246,20 +296,28 @@ expected_bids_columns <- data.frame(
 )
 
 # check if columns are present in the dataframe that are listed in the expected_bids_columns dataframe
+tic("Missing Columns")
 missing_cols <- column_check(bids, expected_bids_columns$column)
-
+toc()
 # check if bids column types match the expected types
+tic("Type Check")
 type_check_summary <- type_check(bids, expected_bids_columns)
+toc()
 
 # identify columns with NA (count) and rows with NA (indices)
-na_col_count <- col_na_check(bids)
-na_row_indices <- get_na_row_indices(bids)
+tic("NA Check")
+na_check <- na_check(bids)
+toc()
+na_col_count <- na_check$col_na_counts
+na_row_indices <- na_check$na_row_indices
 
 # identify columns with blank values (count) and rows with blank values (indices)
+tic("Blank Check")
+blank_check <- blank_check(bids)
+toc()
+blank_col_count <- blank_check$blank_counts
+blank_row_indices <- blank_check$blank_row_indices
 
-
-
-# identify duplicate rows
 
 
 
