@@ -1,0 +1,503 @@
+
+---
+title: "Lab03: Data Cleaning with R"
+author: "TEAM NAME (edit this)"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+# Overview & Goals
+
+In this lab, you will **continue working with the web advertising bids data** to:
+
+- Systematically **detect** and **repair** some other data quality problems using those ideas.
+- Create a **cleaned version** of the dataset (e.g., `bids_clean`).
+- Document your work in a **data cleaning log**.
+
+By the end, you should have:
+
+1. A data set with the majority of the insidious issues corrected.
+2. A short narrative (or table) explaining **what you fixed** and **how**.
+
+> *Work in the **same repository** as previous labs. Update your Jira Kanban board with new cards for this lab and keep committing your progress with clear messages.*
+
+# Setup
+
+## Packages
+
+Minimally, you will need these packages:
+
+```{r loadpackages}
+library(tidyverse)
+library(arrow)
+```
+
+- `tidyverse` (especially `dplyr`, `ggplot2`, `readr`, `stringr`)
+- `stringr` to modify character strings
+- `lubridate` for date–time parsing
+- `arrow` if you are reading/writing Parquet files
+
+> **Task:** In a code chunk, load the packages you need.
+
+## Load the messy bids data
+
+Use the **same dataset** as in the earlier lab (e.g., a Parquet file in your `data/` folder).
+
+> **Tasks:**
+>
+> 1. Read the messy data into R (e.g., using `arrow::read_parquet()` or `readr` functions, depending on your file).
+> 2. Use `dplyr::glimpse()` and/or `summary()` to remind yourselves what variables are present and roughly what they look like.
+> 3. Create a **working copy** of the data so that you can always go back to the original if needed.
+
+You may want to keep the original as `bids_raw` and your working copy as `bids`.
+
+```{r}
+# Your code here
+
+```
+
+
+# Quick Orientation Check (10–15 minutes)
+
+Using your prior lab work and Data Cleaning lectures:
+
+1. In **2–4 sentences**, describe **what each row** in this dataset represents.
+2. Identify **one or two variables** that you think should be:
+   - **Mandatory** (must not be missing), and
+   - Possibly a **unique key** or part of a composite key.
+3. Pick **two variables** and, for each, assign at least one **data quality dimension** (e.g., completeness, validity, consistency, uniqueness, cross-field consistency).
+
+> **Write your answers directly in this Rmd in a text section (not code).**
+
+# Fixing Numeric & Price Issues (30–40 minutes)
+
+Focus on the **PRICE** variable (and other numeric variables if needed).
+
+You should investigate:
+
+- **Type issues** (e.g., stored as character instead of numeric),
+- **Impossible values** (negative values, weird “huge” values),
+- **Sentinel codes** (e.g., `-999`),
+- Extra non-numeric characters.
+
+## Suggested tools
+
+- `class()`, `unique()`, `dplyr::count()`, `summary()`
+- `readr::parse_number()`
+- `as.numeric()`
+- `dplyr::mutate()`, `dplyr::case_when()`
+- `is.na()`, `sum(is.na(...))`
+- `quantile()` to inspect distributions
+
+## Inspect PRICE
+
+> **Tasks:**
+>
+> 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
+
+```{r}
+# Your code here
+
+```
+
+> 2. In short sentences, describe what you see:
+>    - Is `PRICE` numeric or character?
+>    - Do you see obvious anomalies or strange values?
+
+
+## Create a clean numeric version of PRICE
+
+Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
+
+- Extracts numeric content from strings (if necessary),
+- Converts to numeric,
+- Keeps track of values that cannot be converted (they will become `NA`).
+
+> **Tasks:**
+>
+> 1. Use one or more of these:
+>    - `readr::parse_number()`
+>    - `stringr::str_remove_all()`
+>    - `as.numeric()`
+>
+>    To learn about their use, type `?` before either of them (e.g., `?readr::parse_number()`)
+
+```{r}
+# Your code here
+
+```
+
+> 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
+
+
+```{r}
+# Your code here
+
+```
+
+
+## Define and apply rules for impossible values
+
+Now decide how to handle:
+
+- Negative prices,
+- Very large prices that are implausible,
+- Sentinel codes (like `-999`).
+
+> **Tasks:**
+>
+> 1. Use `dplyr::filter()` and summaries (`summary()`, `quantile()`) to identify at least **two kinds** of “bad” price values.
+
+
+```{r}
+# Your code here
+
+```
+
+> 2. Write down your **rules** for how to handle each type (e.g., set to `NA`, drop rows, cap values).
+> 3. Implement those rules in a new variable (e.g., `PRICE_final`) using `dplyr::mutate()` and `dplyr::case_when()`.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Briefly describe your rules in text and justify them using the **validity** and **completeness** dimensions of data quality.
+
+
+# Cleaning Categorical & String Fields (30–40 minutes)
+
+Now work on **categorical** and **string** variables, such as:
+
+- `DEVICE_GEO_REGION`
+- `DEVICE_GEO_ZIP`
+- `RESPONSE_TIME`
+
+Remember: **this dataset only includes bids from Oregon**, so a correct region should be coded as `"OR"`. Other values in `DEVICE_GEO_REGION` represent **modified/mangled versions** of `"OR"`.
+
+Helpful string tools:
+
+- `stringr::str_trim()`, `stringr::str_to_upper()`, `stringr::str_replace()`
+- `stringr::str_detect()`, `stringr::str_pad()`, `stringr::str_length()`
+- `dplyr::count()` to see category frequencies
+
+## DEVICE_GEO_REGION: standardizing Oregon codes
+
+> **Tasks:**
+>
+> 1. Use `dplyr::count(DEVICE_GEO_REGION, sort = TRUE)` to list distinct region values and their frequencies.
+
+```{r}
+# Your code here
+
+```
+
+> 2. Identify **all values** that clearly correspond to **Oregon**, just coded inconsistently (e.g., extra punctuation, different case, misspellings).
+
+
+```{r}
+# Your code here
+
+```
+
+> 3. Define a **standard representation** (`"OR"`) and create a cleaned version (e.g., `DEVICE_GEO_REGION_clean`) where:
+>    - All Oregon variants are standardized to `"OR"`.
+>    - Other values (if any) are treated according to a rule you decide (e.g., set to `NA` if they cannot be interpreted as Oregon).
+
+
+```{r}
+# Your code here
+
+```
+
+> 4. In **2–3 sentences**, explain:
+>    - How you detected inconsistent codes,
+>    - The **set-membership rule** you are enforcing (valid region codes for this dataset).
+
+## DEVICE_GEO_ZIP: formats and sentinels
+
+Treat ZIP codes as **strings**, not numbers.
+
+> **Tasks:**
+>
+> 1. Convert ZIP codes to character and use `dplyr::count()` to inspect common values.
+
+
+```{r}
+# Your code here
+
+```
+
+> 2. Identify suspicious ZIP values:
+>    - Too short / too long,
+>    - Obvious sentinel codes (e.g., `-999`, `9999`),
+>    - Non-digit characters.
+
+```{r}
+# Your code here
+
+```
+
+> 3. Decide on a **pattern** for valid ZIP codes (e.g., Oregon 5-digit ZIPs).
+>    - Consider using `stringr::str_length()`, `stringr::str_detect()` with a regular expression pattern, and `stringr::str_pad()` if necessary.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Create a cleaned version (e.g., `DEVICE_GEO_ZIP_clean`) that:
+>    - Trims whitespace,
+>    - Converts sentinel codes to `NA`,
+>    - Enforces your chosen ZIP pattern.
+
+```{r}
+# Your code here
+
+```
+
+> 5. In a short paragraph, describe your rule and why it is reasonable given the context (Oregon-only data).
+
+
+## RESPONSE_TIME: prefixes and extra characters
+
+The `RESPONSE_TIME` variable may include:
+
+- A **text prefix** (e.g., “RESPONSE_TIME:” or typo’d variants),
+- Extra characters at the end (e.g., punctuation),
+- Numeric content representing a duration.
+
+> **Tasks:**
+>
+> 1. Use a small `sample()` of `RESPONSE_TIME` to inspect the raw patterns.
+
+```{r}
+# Your code here
+
+```
+
+> 2. Write a rule for how to:
+>    - Remove any “RESPONSE_TIME:” prefixes (including likely typos),
+>    - Strip extra non-numeric characters from the end,
+>    - Convert the remaining content to a numeric type.
+> 3. Implement your rule in a cleaned variable (e.g., `RESPONSE_TIME_clean`) using `stringr::str_replace()` or related functions and `as.numeric()`.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
+
+```{r}
+# Your code here
+
+```
+
+> 5. Connect this to the idea of **regular-expression patterns** as a tool for enforcing validity.
+
+# Date–Time Cleaning: TIMESTAMP (20–30 minutes)
+
+The `TIMESTAMP` field records when a bid occurred, but the **format is inconsistent** (for example, some dates may use `-` and others `/`).
+
+Useful tools:
+
+- `as.character()`
+- `stringr::str_detect()`
+- `lubridate::parse_date_time()`, `lubridate::ymd_hms()`, `lubridate::mdy_hms()`
+
+## Inspect TIMESTAMP patterns
+
+> **Tasks:**
+>
+> 1. Look at a small random sample of `TIMESTAMP` values.
+
+```{r}
+# Your code here
+
+```
+
+> 2. Use `stringr::str_detect()` to count how many timestamps use `"-"` versus `"/"` in the date.
+
+```{r}
+# Your code here
+
+```
+
+> 3. Summarize in 1–2 sentences what you observe.
+
+
+
+## Parse TIMESTAMP into a POSIXct variable
+
+> **Tasks:**
+>
+> 1. Use `lubridate::parse_date_time()` (or similar) to create `TIMESTAMP_clean`:
+>    - Allow for multiple possible formats (e.g., one order for `ymd HMS` and one for `mdy HMS` to see examples scroll paste `?lubridate::parse_date_time()` in your console and scroll all the way to the bottom of the function's help tab),
+>    - Specify a time zone (e.g., `"UTC"`).
+
+```{r}
+# Your code here
+
+```
+
+> 2. Count how many `NA`s result from parsing.
+
+```{r}
+# Your code here
+
+```
+
+> 3. Use `summary()` or `range()` to examine the minimum and maximum of `TIMESTAMP_clean`.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Briefly comment on:
+>    - Whether the time range seems reasonable,
+>    - What kinds of entries failed to parse (if any).
+
+# Keys, Duplicates, and Out-of-Range Values (20–30 minutes)
+
+## Candidate keys and duplicates
+
+Using your earlier reasoning:
+
+> **Tasks:**
+>
+> 1. Choose one variable or a combination of variables that you **believe should uniquely identify** a row (a key).
+> 2. Use `dplyr::count()` to check whether that key is truly unique or if there are duplicates.
+
+```{r}
+# Your code here
+
+```
+
+> 3. Check for **full-row duplicates** using `dplyr::distinct()` or by counting occurrences across all columns.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Decide on a rule for handling duplicates:
+>    - Drop exact duplicates?
+>    - Keep first occurrence and drop the rest?
+>    - Something else?
+> 5. Implement your rule and create a de-duplicated dataset (e.g., `bids_nodup`).
+
+```{r}
+# Your code here
+
+```
+
+> 6. In 2–3 sentences, explain your choice and connect it to the **uniqueness** dimension of data quality.
+
+## Out-of-range latitude/longitude (optional but recommended)
+
+Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
+
+> **Tasks:**
+>
+> 1. Use `summary()` or `dplyr::summarise()` to get the minimum and maximum latitude and longitude.
+
+```{r}
+# Your code here
+
+```
+
+> 2. Compare the ranges to what you know about **Oregon’s** geographic coordinates (you can approximate based on general US geography; no need for exact boundaries).
+
+```{r}
+# Your code here
+
+```
+
+> 3. Decide which coordinates are clearly **implausible**.
+
+```{r}
+# Your code here
+
+```
+
+> 4. Define rules to create cleaned versions (e.g., `DEVICE_GEO_LAT_clean`, `DEVICE_GEO_LONG_clean`) where:
+>    - Plausible values are kept,
+>    - Implausible values are set to `NA` or corresponding rows are removed.
+
+```{r}
+# Your code here
+
+```
+
+> 5. Document the rules you used and why.
+
+# Creating a Final Cleaned Dataset (10–15 minutes)
+
+Now pull everything together.
+
+> **Tasks:**
+>
+> 1. Create a final cleaned dataset (e.g., `bids_clean`) that:
+>    - Uses your cleaned variables (`PRICE_final`, `DEVICE_GEO_REGION_clean`, `DEVICE_GEO_ZIP_clean`, `RESPONSE_TIME_clean`, `TIMESTAMP_clean`, cleaned lat/long, etc.),
+>    - Drops unnecessary intermediate columns (e.g., `_raw`, helper strings) that you don’t need for analysis.
+
+```{r}
+# Your code here
+
+```
+
+> 2. Check the structure of `bids_clean` with `dplyr::glimpse()`.
+
+```{r}
+# Your code here
+
+```
+
+> 3. Optionally, write the cleaned dataset to disk (for your own future use) using something like `save()` (see `?save` for its use and an example) to save in `.RData` format **but do not commit the cleaned data file** to the remote repository.
+
+```{r}
+# Your code here (optional)
+
+```
+
+> 4. In a short paragraph, describe what your final cleaned dataset now represents and what major issues have been addressed.
+
+# Data Cleaning Log & Reflection (10–15 minutes)
+
+## Data cleaning log (table)
+
+Create a succinct table summarizing the main problems and fixes.
+
+Use the template below and fill it in with your team’s work. **One row (PRICE) is completed as an example; you should complete the remaining rows yourselves.**
+
+| Variable | Problem Detected (brief) | Data Quality Dimension(s) | Cleaning Action (brief) |
+|----------|-------------------------|---------------------------|--------------------------|
+| PRICE | Includes non-numeric characters | Validity | Extract numeric portion and convert to numeric |
+| DEVICE_GEO_REGION | *(team describes)* | *(team selects)* | *(team describes)* |
+| DEVICE_GEO_ZIP | *(team describes)* | *(team selects)* | *(team describes)* |
+| RESPONSE_TIME | *(team describes)* | *(team selects)* | *(team describes)* |
+| TIMESTAMP | *(team describes)* | *(team selects)* | *(team describes)* |
+| Other variable(s) | *(optional)* | *(optional)* | *(optional)* |
+
+## Reflection (5–8 sentences)
+
+Write a short reflection addressing:
+
+- Which data cleaning tasks were the most **time-consuming** or **surprising**?
+- Which functions or workflows (e.g., `mutate()`, `case_when()`, `str_*()`, `parse_date_time()`, `distinct()`) were most valuable?
+- One thing you will do **differently** the next time you receive a new messy dataset.
+- Whether/how you used generative AI for this lab and how it affected your understanding.
