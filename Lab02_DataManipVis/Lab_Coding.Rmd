@@ -242,7 +242,7 @@ rows. For example, see the following:
 
 ```{r}
 ex <- bids %>% group_by(AUCTION_ID, PUBLISHER_ID) %>%  filter(n() > 1) %>% head(5)
-print(ex)
+kable(ex)
 ```
 
 The only difference between the 1st and 4th rows is the 3rd decimal
@@ -571,6 +571,7 @@ kable(price_summary, caption = "Price summary")
     implausible.
 
 <!-- # NOTE: We may want to change the max price that is considered implausible. Probably based on the std of the price data? 500 seems high when the mean is 0.45? Even though the data dict says 500 is the high? -->
+
 ```{r}
 # checking implausible price range by data dictionary direction
 
