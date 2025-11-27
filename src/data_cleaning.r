@@ -6,8 +6,14 @@ library(lubridate)
 library(tictoc)
 log_appender(appender_tee("logs/data_cleaning.log"))
 
-
-column_check <- function(df, expected_columns) {
+#' Check if expected columns exist in a data frame
+#'
+#' @param df A data frame to check
+#' @param expected_columns Character vector of expected column names
+#' @return Character vector of missing column names (invisible)
+#' @examples
+#' check_columns(df, c("id", "name", "age"))
+check_columns <- function(df, expected_columns) {
   # Check expected_columns is list or character vector
   if (!is.list(expected_columns) && !is.character(expected_columns)) {
     msg <- "expected_columns must be a list or character vector. STOPPING"
@@ -29,7 +35,7 @@ column_check <- function(df, expected_columns) {
       \n {paste(missing_columns, collapse = '\n  \t')}"))
   }
 
-  missing_columns
+  invisible(missing_columns)
 }
 
 #' Check column types against expected types
@@ -46,7 +52,7 @@ column_check <- function(df, expected_columns) {
 #'   Expected_Type = c("numeric", "character", "logical")
 #' )
 #' result <- check_column_types(my_df, expected)
-type_check <- function(df, expected_types) {
+check_column_types <- function(df, expected_types) {
   #Most of this code is hard coded and specific to the expected_types format.
   #Will look to make more flexible later.
 
@@ -67,23 +73,41 @@ type_check <- function(df, expected_types) {
   common_cols <- intersect(names(df), expected_types$column)
 
   # Create comparison data frame for common columns only and add actual column types
-  type_check_df <- expected_types %>%
+  type_comparison <- expected_types %>%
     filter(.data$column %in% common_cols) %>%
-    mutate(actual = df_types[.data$column], .before = "Expected_Type")
+    mutate(
+      actual = df_types[.data$column],
+      .before = "Expected_Type"
+    ) %>%
+    mutate(
+      match = .data$actual == .data$Expected_Type,
+      .after = "Expected_Type"
+    )
 
-  type_check_df
+  type_comparison
 }
 
-col_na_check <- function(df) {
-  col_na_counts <- colSums(is.na(df))
-  col_na_counts
+#' Check for NA values by column
+#'
+#' @param df A data frame to check
+#' @return Named integer vector of NA counts per column
+check_na_by_column <- function(df) {
+  colSums(is.na(df))
 }
 
+#' Get row indices containing NA values
+#'
+#' @param df A data frame to check
+#' @return Integer vector of row indices with NA values
 get_na_row_indices <- function(df) {
   # complete.cases returns true if all rows are complete, false if any row is incomplete (i.e. has NA)
   which(!complete.cases(df))
 }
 
+#' Comprehensive NA check
+#'
+#' @param df A data frame to check
+#' @return List with na_by_column and na_row_indices
 na_check <- function(df) {
   # Can uncomment code below to time functions
   # tic("NA Check")
@@ -92,12 +116,17 @@ na_check <- function(df) {
   # tic("NA Row Indices")
   # na_row_indices <- get_na_row_indices(df)
   # toc()
-  col_na_counts <- col_na_check(df)
-  na_row_indices <- get_na_row_indices(df)
-  list(col_na_counts = col_na_counts, na_row_indices = na_row_indices)
+  list(
+    na_by_column = check_na_by_column(df),
+    na_row_indices = get_na_row_indices(df)
+  )
 }
 
-col_blank_check <- function(df) {
+#' Check for blank/empty strings by column
+#'
+#' @param df A data frame to check
+#' @return Named integer vector of blank counts per column
+check_blanks_by_column <- function(df) {
   # Could use tidyverse approach or sapply to all cols. Current way is faster since it only checks character cols
   # blank_counts <- df %>% summarise(across(everything(), ~ sum(. == "", na.rm = TRUE)))
   # blank_counts <- sapply(df, function(col) sum(col == "", na.rm = TRUE))
@@ -113,14 +142,21 @@ col_blank_check <- function(df) {
   blank_counts
 }
 
+#' Get row indices containing blank values
+#'
+#' @param df A data frame to check
+#' @return Integer vector of row indices with blank values
 get_blank_row_indices <- function(df) {
-  indices <- df %>%
+  df %>%
     mutate(row_id = row_number()) %>%
     filter(if_any(where(is.character), ~ . == "")) %>%
     pull(.data$row_id)
-  indices
 }
 
+#' Comprehensive blank check
+#'
+#' @param df A data frame to check
+#' @return List with blanks_by_column and blank_row_indices
 blank_check <- function(df) {
   # Can uncomment code below to time functions
   # tic("Blank counts")
@@ -130,15 +166,23 @@ blank_check <- function(df) {
   # blank_row_indices <- get_blank_row_indices(df)
   # toc()
 
-  blank_counts <- col_blank_check(df)
-  blank_row_indices <- get_blank_row_indices(df)
-  list(blank_counts = blank_counts, blank_row_indices = blank_row_indices)
+  list(
+    blanks_by_column = check_blanks_by_column(df),
+    blank_row_indices = get_blank_row_indices(df)
+  )
 }
 
+#' Find duplicate rows
+#'
+#' @param df A data frame to check
+#' @return List with duplicate_indices and num_duplicates
 find_duplicates <- function(df) {
-  duplicate_indices <- which(duplicated(df[, !(names(df) %in% "row_id")]))
-  num_duplicates <- length(duplicate_indices)
-  list(duplicate_indices = duplicate_indices, num_duplicates = num_duplicates)
+  check_cols <- setdiff(names(df), "row_id")
+  duplicate_indices <- which(duplicated(df[, check_cols]))
+  list(
+    duplicate_indices = duplicate_indices,
+    num_duplicates = length(duplicate_indices)
+  )
 }
 
 convert_price_to_numeric <- function(df) {
@@ -495,11 +539,11 @@ expected_bids_columns <- data.frame(
 
 # check if columns are present in the dataframe that are listed in the expected_bids_columns dataframe
 tic("Missing Columns")
-missing_cols <- column_check(bids, expected_bids_columns$column)
+missing_cols <- check_columns(bids, expected_bids_columns$column)
 toc()
 # check if bids column types match the expected types
-tic("Type Check")
-type_check_summary <- type_check(bids, expected_bids_columns)
+tic("Column Types Check")
+type_check_summary <- check_column_types(bids, expected_bids_columns)
 toc()
 
 # identify columns with NA (count) and rows with NA (indices)
