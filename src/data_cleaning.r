@@ -433,14 +433,14 @@ convert_to_posixct <- function(df, col_name,
       sep = " ",
       remove = FALSE
     ) %>%
+    # mutate(
+    #   TIMESTAMP_date_clean = case_when(
+    #     .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
+    #     TRUE ~ .data$TIMESTAMP_date
+    #   )
+    # ) %>%
     mutate(
-      TIMESTAMP_date_clean = case_when(
-        .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
-        TRUE ~ .data$TIMESTAMP_date
-      )
-    ) %>%
-    mutate(
-      "{output_col}" := paste(.data$TIMESTAMP_date_clean, .data$TIMESTAMP_time)
+      "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
     )
 
 

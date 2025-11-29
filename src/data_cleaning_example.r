@@ -101,3 +101,5 @@ if (interactive()) {
   type_check_final <- check_column_types(bids, expected_bids_columns)
   # End of main execution block
 }  # End if (sys.nframe() == 0)
+
+

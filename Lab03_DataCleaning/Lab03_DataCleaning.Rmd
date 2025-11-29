@@ -1,4 +1,3 @@
-
 ---
 title: "Lab03: Data Cleaning with R"
 author: "International Commuters"
@@ -105,7 +104,19 @@ Using your prior lab work and Data Cleaning lectures:
 
 > **Write your answers directly in this Rmd in a text section (not code).**
 
-```{r}
+---
+
+NEAL:
+
+I already did some work on this and have a summary function that looks at the bids df and the
+expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
+
+I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
+as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
+
+---
+
+```{r type summary}
 # NEAL: I already did some work on this and have a summary function that looks at the bids df and the
 # expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
 
@@ -157,7 +168,7 @@ You should investigate:
 >
 > 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
 
-```{r}
+```{r PRICE head}
 cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"))
 
 print(head(bids$PRICE, 10))
@@ -197,13 +208,13 @@ I overwrite the original column, but the original data is maintained in the orig
 Can change if we need to.
 
 Code can be found in the src/data_cleaning.r file. Example usage can be found in the src/data_cleaning_example.r file.
-The code is not elegent and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
+The code is not elegant and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
 
 ---
 
 Code
 
-```{r}
+```{r PRICE conversion}
 # Your code here
 
 bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
@@ -213,7 +224,7 @@ head(bids$PRICE, 10)
 > 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
 
 
-```{r}
+```{r PRICE na count}
 # Your code here
 na_prices <- sum(is.na(bids$PRICE))
 cat(glue("There are {na_prices} NA prices"))
@@ -369,12 +380,12 @@ The `RESPONSE_TIME` variable may include:
 
 ---
 
-Again, i am using the code from the src/data_cleaning.r file. I exctract numeric values from the RESPONSE_TIME column.
+Again, i am using the code from the src/data_cleaning.r file. I extract numeric values from the RESPONSE_TIME column.
 I am not finding any NA's after the extraction, but have not looked for outlier values or sentinel codes.
 
 ---
 
-```{r}
+```{r RESPONSE_TIME conversion}
 # Your code here
 bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
 head(bids$RESPONSE_TIME, 10)
@@ -382,7 +393,7 @@ head(bids$RESPONSE_TIME, 10)
 
 > 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
 
-```{r}
+```{r RESPONSE_TIME NA count}
 # Your code here
 na_response_time <- sum(is.na(bids$RESPONSE_TIME))
 cat(glue("There are {na_response_time} NA response times"))
@@ -413,9 +424,83 @@ Useful tools:
 
 > 2. Use `stringr::str_detect()` to count how many timestamps use `"-"` versus `"/"` in the date.
 
-```{r}
+---
+
+NEAL: Did some exploring of the TIMESTAMP col but deleted most of the code once I identified the issues. The original messy code can be found at the bottom of src/data_cleaning_example.r file. Have to go back to commit 97b3c8c to see original code. Will repeat some of the relevant parts below.
+
+TL;DR
+The code below is messy and inefficient, but it was how I (NEAL) explored the TIMESTAMP and DATE cols. My conclusion, and solution, was to concatenate the date from DATE_UTC and time from TIMESTAMP as strings into an new column and then convert to POSIX.
+
+---
+```{r TIMESTAMP exploration}
 # Your code here
 
+# EXPLORATORY CODE
+# ========================================================================================
+# Get DATE_UTC column, which is a character initially, and convert to Date
+# Get rows where complete.cases is FALSE
+
+datetime_df <- data.frame(
+  DATE_UTC_0 = original_bids$DATE_UTC,
+  TIMESTAMP_0 = original_bids$TIMESTAMP
+)
+
+datetime_df$DATE <- as.Date(datetime_df$DATE_UTC_0, format = "%Y-%m-%d")
+
+# get TIMESTAMP column, which is a character initially, split each row with delim " "
+# Then convert to a dataframe and find all rows where the first column is "NA" <-- string
+# Parse the TIMESTAMP column using space delimiter into date and time components
+timestamp_split <- strsplit(as.character(datetime_df$TIMESTAMP_0), " ")
+timestamp_df <- as.data.frame(do.call(rbind, timestamp_split), stringsAsFactors = FALSE)
+colnames(timestamp_df) <- c("TIMESTAMP_date", "TIMESTAMP_time")
+
+# Combine into one df
+datetime_df <- cbind(datetime_df, timestamp_df)
+
+DATE_date_NA_indices <- which(is.na(datetime_df$DATE))
+TIMESTAMP_date_NA_indices <- which(apply(timestamp_df, 1, function(row) any(row == "NA")))
+
+# Add new column to datetime_dfthat duplicates the TIMESTAMP_date column
+# Overwrite TIMESTAMP_date2 with date_col for rows in na_row_indices
+datetime_df$TIMESTAMP_date2 <- datetime_df$TIMESTAMP_date
+datetime_df$TIMESTAMP_date2[TIMESTAMP_date_NA_indices] <- as.character(datetime_df$DATE[TIMESTAMP_date_NA_indices])
+
+# Check if date_col and TIMESTAMP_date2 are equal (element-wise, after coercion if needed)
+are_equal <- all(as.Date(datetime_df$TIMESTAMP_date2) == as.Date(datetime_df$DATE), na.rm = TRUE)
+cat("Are date_col and TIMESTAMP_date2 equal?\n")
+print(are_equal)
+cat(sprintf("Number of mismatches: %d\n", sum(!are_equal, na.rm = TRUE)))
+
+
+# Create a new TIMESTAMP column that is the concatenation of TIMESTAMP_date2 and TIMESTAMP_time_col
+datetime_df$TIMESTAMP_corrected <- paste(datetime_df$TIMESTAMP_date2, datetime_df$TIMESTAMP_time)
+
+# Handle multiple formats in the TIMESTAMP column
+format_1 <- "%Y-%m-%d %H:%M:%S"
+format_2 <- "%m/%d/%Y %H:%M:%S"
+
+format_1_col <- as.POSIXct(datetime_df$TIMESTAMP_corrected, format = format_1, tz = "UTC")
+format_2_col <- as.POSIXct(datetime_df$TIMESTAMP_corrected, format = format_2, tz = "UTC")
+
+not_NA_format_1 <- which(!is.na(format_1_col))
+not_NA_format_2 <- which(!is.na(format_2_col))
+
+any_in_both <- any(not_NA_format_1 %in% not_NA_format_2)
+
+combined_indices <- sort(unique(c(not_NA_format_1, not_NA_format_2)))
+
+all_row_indices <- seq_len(nrow(datetime_df))
+
+missing_indices <- setdiff(all_row_indices, combined_indices)
+
+all_corrected_col <- format_1_col
+all_corrected_col[not_NA_format_2] <- format_2_col[not_NA_format_2]
+
+datetime_df$TIMESTAMP_posixct <- all_corrected_col
+
+# Check for NA values in TIMESTAMP_posixct column
+na_posixct_indices <- which(is.na(datetime_df$TIMESTAMP_posixct))
+cat(sprintf("Number of NA values in TIMESTAMP_posixct: %d\n", length(na_posixct_indices)))
 ```
 
 > 3. Summarize in 1–2 sentences what you observe.
@@ -430,8 +515,26 @@ Useful tools:
 >    - Allow for multiple possible formats (e.g., one order for `ymd HMS` and one for `mdy HMS` to see examples scroll paste `?lubridate::parse_date_time()` in your console and scroll all the way to the bottom of the function's help tab),
 >    - Specify a time zone (e.g., `"UTC"`).
 
-```{r}
+
+---
+
+NEAL:
+
+Have code to clean up the TIMESTAMP col. Solution was to concatenate the date from the DATE_UTC column (consistent formatting and NA free), and the time from the TIMESTAMP col (consistent formatting and NA free). Did check to ensure all non-NA dates in TIMESTAMP col were equal to that in the DATE col.
+
+The final code does the above concatenation and then conversion to POSIX. See convert_to_posixct() in src/data_cleaning.r for code.
+
+Added cols to bids
+TIMESTAMP_0 - original TIMESTAMP column
+TIMESTAMP_date - parsed date from TIMESTAMP_0
+TIMESTAMP_time - parsed time from TIMESTAMP_0
+TIMESTAMP - corrected time stamp column
+
+---
+```{r }
 # Your code here
+
+bids <- convert_to_posixct(bids, "TIMESTAMP")
 
 ```
 
@@ -439,6 +542,8 @@ Useful tools:
 
 ```{r}
 # Your code here
+TIMESTAMP_na_count <- sum(which(is.na(bids$TIMESTAMP)))
+cat(glue("There are {TIMESTAMP_na_count} NAs in the TIMESTAMP column"))
 
 ```
 
@@ -471,9 +576,22 @@ Using your earlier reasoning:
 
 > 3. Check for **full-row duplicates** using `dplyr::distinct()` or by counting occurrences across all columns.
 
+---
+
+NEAL:
+
+Already have code to check for duplicated, but need to exclude the row_id column from the check. Using duplicated() function which should only identify a row as a duplicated if it has already shown up, i.e. row of first occurrence is not listed in duplicate_indices
+
+---
 ```{r}
 # Your code here
 
+duplicate_check <- find_duplicates(bids, exclude_cols = c("row_id"))
+duplicate_indices <- duplicate_check$duplicate_indices
+num_duplicates <- duplicate_check$num_duplicates
+
+cat(glue("There are {num_duplicates} duplicate rows in the dataset"), "\n")
+cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 ```
 
 > 4. Decide on a rule for handling duplicates:

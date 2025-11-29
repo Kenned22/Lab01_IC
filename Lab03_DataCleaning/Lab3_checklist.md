@@ -22,7 +22,14 @@ title: "Lab 3 Checklist"
 3. RESPONSE_TIME: prefixes and extra characters
     - convert to numeric - **DONE**
     - check for NA's - **DONE** (none found)
-4. Date–Time Cleaning: TIMESTAMP (20–30 minutes) - DONE(ish). Fixed the field but did not do all the things the lab asks for.
+4. Date–Time Cleaning: TIMESTAMP (20–30 minutes) - DONE(ish).
+    - Fixed the field but did not do all the things the lab asks for. Added some code showing how I explored the timestamp data issues and a brief explination on my ultimate fix. Still need to provide some written answers to questions
+5. Keys, Duplicates, and Out-of-Range Values (20–30 minutes)
+    - 5.1) Candidate keys and duplicates: Provided a bit of an answer earlier in lab. I do not believe there is any set of cols that can be guaranteed to provide a unique identifier. Shows filtered rows that demonstrate that. Still need to do work the lab explicitly asks for.
+    - 5.2) check for duplicates - **DONE**
+    - 5.3) decide on duplicate handling rule - **NOT DONE**
+6. Out-of-range latitude/longitude (optional but recommended) -- **NOT DONE**
+7. Final cleaned dataset - **NOT DONE**
 
 
 
