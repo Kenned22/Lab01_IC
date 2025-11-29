@@ -5,6 +5,12 @@
 data/
 .vscode/
 .DS_Store
+<<<<<<< HEAD
+.lintr
+Lab_Coding.html
+logs/
+=======
 Lab_Coding.html
 .lintr
 logs/
+>>>>>>> main
