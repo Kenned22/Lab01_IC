@@ -42,6 +42,21 @@ Minimally, you will need these packages:
 ```{r loadpackages}
 library(tidyverse)
 library(arrow)
+
+library(logger)
+library(glue)
+library(dplyr)
+library(tidyr)
+library(rlang)
+library(lubridate)
+library(tictoc)
+library(here)
+library(jsonlite)
+library(knitr)
+library(kableExtra)
+library(DT)
+
+source(here("src", "data_cleaning.r"))
 ```
 
 - `tidyverse` (especially `dplyr`, `ggplot2`, `readr`, `stringr`)
@@ -66,6 +81,15 @@ You may want to keep the original as `bids_raw` and your working copy as `bids`.
 ```{r}
 # Your code here
 
+original_bids <- read_parquet(here("data", "bids_data_vDTR.parquet"))
+bids <- original_bids %>% mutate(row_id = row_number())
+expected_columns <- data.frame(readr::read_csv(
+  here::here("data", "expected_columns.csv"),
+  col_types = "ccc"
+))
+
+glimpse(bids)
+
 ```
 
 
@@ -80,6 +104,32 @@ Using your prior lab work and Data Cleaning lectures:
 3. Pick **two variables** and, for each, assign at least one **data quality dimension** (e.g., completeness, validity, consistency, uniqueness, cross-field consistency).
 
 > **Write your answers directly in this Rmd in a text section (not code).**
+
+```{r}
+# NEAL: I already did some work on this and have a summary function that looks at the bids df and the
+# expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
+
+missing_columns <- check_columns(bids, expected_columns$column)
+cat(glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
+
+bids_type_summary <- check_column_types(bids, expected_columns)
+print(bids_type_summary)
+
+# I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
+# as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
+
+ex <- bids %>% group_by(AUCTION_ID, PUBLISHER_ID) %>%  filter(n() > 1) %>% head(5)
+DT::datatable(ex,
+              options = list(scrollX = TRUE, scrollY = "300px", pageLength = 5),
+              class = "compact stripe") %>%
+  formatStyle(
+    columns = names(ex),
+    backgroundColor = "white",
+    color = "black"
+  )
+
+```
+
 
 # Fixing Numeric & Price Issues (30–40 minutes)
 
@@ -108,8 +158,9 @@ You should investigate:
 > 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
 
 ```{r}
-# Your code here
+cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"))
 
+print(head(bids$PRICE, 10))
 ```
 
 > 2. In short sentences, describe what you see:
@@ -134,9 +185,29 @@ Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
 >
 >    To learn about their use, type `?` before either of them (e.g., `?readr::parse_number()`)
 
+
+---
+
+NEAL:
+Already done. Two issues were identified and fixed:
+  1. prices are stored as character instead of numeric
+  2. there are some prices that the leading 0 is an "O". The code below fixes this.
+
+I overwrite the original column, but the original data is maintained in the original_bids dataframe.
+Can change if we need to.
+
+Code can be found in the src/data_cleaning.r file. Example usage can be found in the src/data_cleaning_example.r file.
+The code is not elegent and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
+
+---
+
+Code
+
 ```{r}
 # Your code here
 
+bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
+head(bids$PRICE, 10)
 ```
 
 > 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
@@ -144,7 +215,8 @@ Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
 
 ```{r}
 # Your code here
-
+na_prices <- sum(is.na(bids$PRICE))
+cat(glue("There are {na_prices} NA prices"))
 ```
 
 
@@ -294,16 +366,26 @@ The `RESPONSE_TIME` variable may include:
 >    - Convert the remaining content to a numeric type.
 > 3. Implement your rule in a cleaned variable (e.g., `RESPONSE_TIME_clean`) using `stringr::str_replace()` or related functions and `as.numeric()`.
 
+
+---
+
+Again, i am using the code from the src/data_cleaning.r file. I exctract numeric values from the RESPONSE_TIME column.
+I am not finding any NA's after the extraction, but have not looked for outlier values or sentinel codes.
+
+---
+
 ```{r}
 # Your code here
-
+bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
+head(bids$RESPONSE_TIME, 10)
 ```
 
 > 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
 
 ```{r}
 # Your code here
-
+na_response_time <- sum(is.na(bids$RESPONSE_TIME))
+cat(glue("There are {na_response_time} NA response times"))
 ```
 
 > 5. Connect this to the idea of **regular-expression patterns** as a tool for enforcing validity.
