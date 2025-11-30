@@ -97,10 +97,17 @@ glimpse(bids)
 Using your prior lab work and Data Cleaning lectures:
 
 1. In **2–4 sentences**, describe **what each row** in this dataset represents.
+*Each row represents a single bid in an online advertising auction. It captures the bid's details, including the auction context, user device information, geographic data, ad specifications, and the bid's monetary and technical parameters.*
+
 2. Identify **one or two variables** that you think should be:
    - **Mandatory** (must not be missing), and
    - Possibly a **unique key** or part of a composite key.
+*Mandatory: `TIMESTAMP` = When it happened, `PRICE` = The business value*
+*Unique key: As confirmed in the analysis, no natural composite key (e.g., `AUCTION_ID` + `PUBLISHER_ID`) is truly unique, as duplicate combinations exist. Therefore, the artificially added `row_id` column is necessary to serve as a unique key for each bid record.*
+
 3. Pick **two variables** and, for each, assign at least one **data quality dimension** (e.g., completeness, validity, consistency, uniqueness, cross-field consistency).
+*`PRICE` (Validity & Completeness)*
+*`RESPONSE_TIME` (Validity & Consistency)*
 
 > **Write your answers directly in this Rmd in a text section (not code).**
 
