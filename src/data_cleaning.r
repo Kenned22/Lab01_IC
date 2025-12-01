@@ -18,78 +18,78 @@ library(jsonlite)
 
 log_appender(appender_tee("logs/data_cleaning.log"))
 
-# ==============================================================================
-# VALIDATION FUNCTIONS
-# ==============================================================================
+# # ==============================================================================
+# # VALIDATION FUNCTIONS
+# # ==============================================================================
 
-#' Check if expected columns exist in a data frame
-#'
-#' @param df A data frame to check
-#' @param expected_columns Character vector of expected column names
-#' @return Character vector of missing column names (invisible)
-#' @examples
-#' check_columns(df, c("id", "name", "age"))
-check_columns <- function(df, expected_columns) {
-  if (!is.list(expected_columns) && !is.character(expected_columns)) {
-    msg <- "expected_columns must be a list or character vector"
-    log_error(msg)
-    stop(msg)
-  }
+# #' Check if expected columns exist in a data frame
+# #'
+# #' @param df A data frame to check
+# #' @param expected_columns Character vector of expected column names
+# #' @return Character vector of missing column names (invisible)
+# #' @examples
+# #' check_columns(df, c("id", "name", "age"))
+# check_columns <- function(df, expected_columns) {
+#   if (!is.list(expected_columns) && !is.character(expected_columns)) {
+#     msg <- "expected_columns must be a list or character vector"
+#     log_error(msg)
+#     stop(msg)
+#   }
 
-  expected_columns <- as.character(expected_columns)
-  missing_columns <- setdiff(expected_columns, colnames(df))
+#   expected_columns <- as.character(expected_columns)
+#   missing_columns <- setdiff(expected_columns, colnames(df))
 
-  if (length(missing_columns) == length(expected_columns)) {
-    msg <- "All expected columns are missing from the dataframe"
-    log_error(msg)
-    stop(msg)
-  } else if (length(missing_columns) > 0) {
-    warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
-  }
+#   if (length(missing_columns) == length(expected_columns)) {
+#     msg <- "All expected columns are missing from the dataframe"
+#     log_error(msg)
+#     stop(msg)
+#   } else if (length(missing_columns) > 0) {
+#     warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
+#   }
 
-  invisible(missing_columns)
-}
+#   invisible(missing_columns)
+# }
 
-#' Check column types against expected types
-#'
-#' @param df A data frame to check
-#' @param expected_types A data frame with columns: 'column', 'Expected_Type'
-#' @return A data frame comparing actual vs expected types
-#' @examples
-#' expected <- data.frame(
-#'   column = c("age", "name"),
-#'   Expected_Type = c("numeric", "character")
-#' )
-#' check_column_types(df, expected)
-check_column_types <- function(df, expected_types) {
-  if (is.null(expected_types$column) || length(expected_types$column) == 0) {
-    stop("expected_types must have a 'column' field with column names")
-  }
+# #' Check column types against expected types
+# #'
+# #' @param df A data frame to check
+# #' @param expected_types A data frame with columns: 'column', 'Expected_Type'
+# #' @return A data frame comparing actual vs expected types
+# #' @examples
+# #' expected <- data.frame(
+# #'   column = c("age", "name"),
+# #'   Expected_Type = c("numeric", "character")
+# #' )
+# #' check_column_types(df, expected)
+# check_column_types <- function(df, expected_types) {
+#   if (is.null(expected_types$column) || length(expected_types$column) == 0) {
+#     stop("expected_types must have a 'column' field with column names")
+#   }
 
-  if (!all(sapply(expected_types$Expected_Type, is.character))) {
-    stop("All values in Expected_Type must be character strings")
-  }
+#   if (!all(sapply(expected_types$Expected_Type, is.character))) {
+#     stop("All values in Expected_Type must be character strings")
+#   }
 
-  # Get actual types
-  df_types <- sapply(df, function(col) class(col)[1])
+#   # Get actual types
+#   df_types <- sapply(df, function(col) class(col)[1])
 
-  # Find common columns
-  common_cols <- intersect(names(df), expected_types$column)
+#   # Find common columns
+#   common_cols <- intersect(names(df), expected_types$column)
 
-  # Create comparison
-  type_comparison <- expected_types %>%
-    filter(.data$column %in% common_cols) %>%
-    mutate(
-      actual = df_types[.data$column],
-      .before = "Expected_Type"
-    ) %>%
-    mutate(
-      match = .data$actual == .data$Expected_Type,
-      .after = "Expected_Type"
-    )
+#   # Create comparison
+#   type_comparison <- expected_types %>%
+#     filter(.data$column %in% common_cols) %>%
+#     mutate(
+#       actual = df_types[.data$column],
+#       .before = "Expected_Type"
+#     ) %>%
+#     mutate(
+#       match = .data$actual == .data$Expected_Type,
+#       .after = "Expected_Type"
+#     )
 
-  type_comparison
-}
+#   type_comparison
+# }
 
 # ==============================================================================
 # DATA QUALITY ASSESSMENT FUNCTIONS
@@ -158,20 +158,20 @@ check_blanks <- function(df) {
   )
 }
 
-#' Find duplicate rows
-#'
-#' @param df A data frame to check
-#' @param exclude_cols Column names to exclude from duplication check
-#' @return List with duplicate_indices and num_duplicates
-find_duplicates <- function(df, exclude_cols = c("row_id")) {
-  check_cols <- setdiff(names(df), exclude_cols)
-  duplicate_indices <- which(duplicated(df[, check_cols]))
-
-  list(
-    duplicate_indices = duplicate_indices,
-    num_duplicates = length(duplicate_indices)
-  )
-}
+#' #' Find duplicate rows
+#' #'
+#' #' @param df A data frame to check
+#' #' @param exclude_cols Column names to exclude from duplication check
+#' #' @return List with duplicate_indices and num_duplicates
+#' find_duplicates <- function(df, exclude_cols = c("row_id")) {
+#'   check_cols <- setdiff(names(df), exclude_cols)
+#'   duplicate_indices <- which(duplicated(df[, check_cols]))
+#' 
+#'   list(
+#'     duplicate_indices = duplicate_indices,
+#'     num_duplicates = length(duplicate_indices)
+#'   )
+#' }
 
 #' Comprehensive data quality assessment
 #'
@@ -378,76 +378,76 @@ convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TR
   convert_column(df, col_name, "numeric", preprocess_fn = preprocess, verbose = verbose)
 }
 
-#' Convert column to POSIXct timestamp
-#'
-#' @param df A data frame
-#' @param col_name Name of column to convert
-#' @param format Datetime format string
-#' @param tz Timezone
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_posixct <- function(df, col_name,
-                               format = "%Y-%m-%d %H:%M:%S",
-                               tz = "UTC",
-                               verbose = TRUE,
-                               date_col = "DATE_UTC",
-                               timestamp_col = "TIMESTAMP",
-                               output_col = "TIMESTAMP") {
-
-  # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
-  # but some dates are str "NA" and when dates are present, there are two different formats. Compared
-  # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
-  # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
-  # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
-  # column to TIMESTAMP_0.
-
-  # TO DO: FORMAT AS A PREPROCESSING FUNCTION FOR THE CONVERT_COLUMN FUNCTION
-  # datetime_conversion_func <- function(df,
-  #                                      date_col = "DATE_UTC",
-  #                                      timestamp_col = "TIMESTAMP",
-  #                                      output_col = "TIMESTAMP_corrected") {
-  #   df <- df %>%
-  #     separate(
-  #       timestamp_col,
-  #       into = c("TIMESTAMP_date", "TIMESTAMP_time"),
-  #       sep = " ",
-  #       remove = FALSE
-  #     ) %>%
-  #     mutate(
-  #       TIMESTAMP_date_clean = case_when(
-  #         .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
-  #         TRUE ~ .data$TIMESTAMP_date
-  #       )
-  #     ) %>%
-  #     mutate(
-  #       "{output_col}" := paste(.data$TIMESTAMP_date_clean, .data$TIMESTAMP_time)
-  #     )
-  # }
-
-  df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
-
-  df <- df %>%
-    separate(
-      "TIMESTAMP_0",
-      into = c("TIMESTAMP_date", "TIMESTAMP_time"),
-      sep = " ",
-      remove = FALSE
-    ) %>%
-    # mutate(
-    #   TIMESTAMP_date_clean = case_when(
-    #     .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
-    #     TRUE ~ .data$TIMESTAMP_date
-    #   )
-    # ) %>%
-    mutate(
-      "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
-    )
-
-
-
-  convert_column(df, output_col, "POSIXct",
-                 format = format, tz = tz, verbose = verbose)
-}
+#' #' Convert column to POSIXct timestamp
+#' #'
+#' #' @param df A data frame
+#' #' @param col_name Name of column to convert
+#' #' @param format Datetime format string
+#' #' @param tz Timezone
+#' #' @param verbose Whether to print messages
+#' #' @return Data frame with converted column
+#' convert_to_posixct <- function(df, col_name,
+#'                                format = "%Y-%m-%d %H:%M:%S",
+#'                                tz = "UTC",
+#'                                verbose = TRUE,
+#'                                date_col = "DATE_UTC",
+#'                                timestamp_col = "TIMESTAMP",
+#'                                output_col = "TIMESTAMP") {
+#' 
+#'   # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
+#'   # but some dates are str "NA" and when dates are present, there are two different formats. Compared
+#'   # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
+#'   # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
+#'   # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
+#'   # column to TIMESTAMP_0.
+#' 
+#'   # TO DO: FORMAT AS A PREPROCESSING FUNCTION FOR THE CONVERT_COLUMN FUNCTION
+#'   # datetime_conversion_func <- function(df,
+#'   #                                      date_col = "DATE_UTC",
+#'   #                                      timestamp_col = "TIMESTAMP",
+#'   #                                      output_col = "TIMESTAMP_corrected") {
+#'   #   df <- df %>%
+#'   #     separate(
+#'   #       timestamp_col,
+#'   #       into = c("TIMESTAMP_date", "TIMESTAMP_time"),
+#'   #       sep = " ",
+#'   #       remove = FALSE
+#'   #     ) %>%
+#'   #     mutate(
+#'   #       TIMESTAMP_date_clean = case_when(
+#'   #         .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
+#'   #         TRUE ~ .data$TIMESTAMP_date
+#'   #       )
+#'   #     ) %>%
+#'   #     mutate(
+#'   #       "{output_col}" := paste(.data$TIMESTAMP_date_clean, .data$TIMESTAMP_time)
+#'   #     )
+#'   # }
+#' 
+#'   df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
+#' 
+#'   df <- df %>%
+#'     separate(
+#'       "TIMESTAMP_0",
+#'       into = c("TIMESTAMP_date", "TIMESTAMP_time"),
+#'       sep = " ",
+#'       remove = FALSE
+#'     ) %>%
+#'     # mutate(
+#'     #   TIMESTAMP_date_clean = case_when(
+#'     #     .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
+#'     #     TRUE ~ .data$TIMESTAMP_date
+#'     #   )
+#'     # ) %>%
+#'     mutate(
+#'       "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
+#'     )
+#' 
+#' 
+#' 
+#'   convert_column(df, output_col, "POSIXct",
+#'                  format = format, tz = tz, verbose = verbose)
+#' }
 
 #' Convert column to Date
 #'
@@ -473,28 +473,28 @@ convert_to_character <- function(df, col_name, verbose = TRUE) {
   convert_column(df, col_name, "character", verbose = verbose)
 }
 
-#' Convert column to integer with digit extraction
-#'
-#' @param df A data frame
-#' @param col_name Name of column to convert
-#' @param extract_digits Whether to extract only digits before converting
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_integer <- function(df, col_name,
-                               extract_digits = FALSE,
-                               verbose = TRUE) {
-  preprocess <- if (extract_digits) {
-    function(x) {
-      if (verbose) cat("Extracting digits from string...\n")
-      gsub("[^0-9]", "", x)
-    }
-  } else {
-    NULL
-  }
+# #' Convert column to integer with digit extraction
+# #'
+# #' @param df A data frame
+# #' @param col_name Name of column to convert
+# #' @param extract_digits Whether to extract only digits before converting
+# #' @param verbose Whether to print messages
+# #' @return Data frame with converted column
+# convert_to_integer <- function(df, col_name,
+#                                extract_digits = FALSE,
+#                                verbose = TRUE) {
+#   preprocess <- if (extract_digits) {
+#     function(x) {
+#       if (verbose) cat("Extracting digits from string...\n")
+#       gsub("[^0-9]", "", x)
+#     }
+#   } else {
+#     NULL
+#   }
 
-  convert_column(df, col_name, "integer",
-                 preprocess_fn = preprocess, verbose = verbose)
-}
+#   convert_column(df, col_name, "integer",
+#                  preprocess_fn = preprocess, verbose = verbose)
+# }
 
 #' Convert column to logical
 #'

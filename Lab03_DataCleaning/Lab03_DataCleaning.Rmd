@@ -55,7 +55,7 @@ library(knitr)
 library(kableExtra)
 library(DT)
 
-source(here("src", "data_cleaning.r"))
+# source(here("src", "data_cleaning.r"))
 ```
 
 - `tidyverse` (especially `dplyr`, `ggplot2`, `readr`, `stringr`)
@@ -138,6 +138,81 @@ I made a slight change to the code to help it run even if the expected csv is no
 that you've done Neal looks great!
 
 ---
+
+```{r column check and type summary functions}
+#' Check if expected columns exist in a data frame
+#'
+#' @param df A data frame to check
+#' @param expected_columns Character vector of expected column names
+#' @return Character vector of missing column names (invisible)
+#' @examples
+#' check_columns(df, c("id", "name", "age"))
+check_columns <- function(df, expected_columns) {
+  if (!is.list(expected_columns) && !is.character(expected_columns)) {
+    msg <- "expected_columns must be a list or character vector"
+    log_error(msg)
+    stop(msg)
+  }
+
+  expected_columns <- as.character(expected_columns)
+  missing_columns <- setdiff(expected_columns, colnames(df))
+
+  if (length(missing_columns) == length(expected_columns)) {
+    msg <- "All expected columns are missing from the dataframe"
+    log_error(msg)
+    stop(msg)
+  } else if (length(missing_columns) > 0) {
+    warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
+  }
+
+  missing_columns
+}
+
+#' Check column types against expected types
+#'
+#' @param df A data frame to check
+#' @param expected_types A data frame with columns: 'column', 'Expected_Type'
+#' @return A data frame comparing actual vs expected types
+#' @examples
+#' expected <- data.frame(
+#'   column = c("age", "name"),
+#'   Expected_Type = c("numeric", "character")
+#' )
+#' check_column_types(df, expected)
+check_column_types <- function(df, expected_types) {
+  if (is.null(expected_types$column) || length(expected_types$column) == 0) {
+    stop("expected_types must have a 'column' field with column names")
+  }
+
+  if (!all(sapply(expected_types$Expected_Type, is.character))) {
+    stop("All values in Expected_Type must be character strings")
+  }
+
+  # Get actual types
+  df_types <- sapply(df, function(col) class(col)[1])
+
+  # Find common columns
+  common_cols <- intersect(names(df), expected_types$column)
+
+  # Create comparison
+  type_comparison <- expected_types %>%
+    filter(.data$column %in% common_cols) %>%
+    mutate(
+      actual = df_types[.data$column],
+      .before = "Expected_Type"
+    ) %>%
+    mutate(
+      match = .data$actual == .data$Expected_Type,
+      .after = "Expected_Type"
+    )
+
+  type_comparison
+}
+
+
+```
+
+
 
 ```{r type summary}
 # NEAL: I already did some work on this and have a summary function that looks at the bids df and the
@@ -237,17 +312,158 @@ The code is not elegant and not the easiest to modify without getting into the g
 
 ---
 
-Code
+```{r Functions: Type conversion}
+
+# ==============================================================================
+# TYPE CONVERSION HELPERS
+# ==============================================================================
+
+#' Get type conversion function for a target type
+#'
+#' @param target_type Character string of target type
+#' @return Function that converts to target type
+get_type_func <- function(target_type) {
+  converters <- list(
+    character = as.character,
+    numeric = as.numeric,
+    integer = as.integer,
+    logical = as.logical,
+    Date = as.Date,
+    POSIXct = function(x, ...) as.POSIXct(x, ...)
+  )
+
+  if (!target_type %in% names(converters)) {
+    stop(glue("Unknown type: {target_type}\nSupported: {paste(names(converters), collapse = ', ')}"))
+  }
+
+  converters[[target_type]]
+}
+
+#' Get type checking function for a target type
+#'
+#' @param target_type Character string of target type
+#' @return Function that checks if value is of target type
+get_check_func <- function(target_type) {
+  checkers <- list(
+    character = is.character,
+    numeric = is.numeric,
+    integer = is.integer,
+    logical = is.logical,
+    Date = function(x) inherits(x, "Date"),
+    POSIXct = function(x) inherits(x, "POSIXct")
+  )
+
+  if (!target_type %in% names(checkers)) {
+    stop(glue("Unknown type: {target_type}"))
+  }
+
+  checkers[[target_type]]
+}
+
+# ==============================================================================
+# GENERIC TYPE CONVERSION FUNCTION
+# ==============================================================================
+
+#' Convert a column to a target type with optional preprocessing
+#'
+#' @param df A data frame
+#' @param col_name Name of the column to convert
+#' @param target_type Target type as string (e.g., "numeric", "POSIXct")
+#' @param preprocess_fn Optional preprocessing function
+#' @param verbose Whether to print conversion messages
+#' @param ... Additional arguments passed to conversion function
+#' @return Data frame with converted column
+#' @examples
+#' # Convert with preprocessing
+#' df <- convert_column(df, "PRICE", "numeric",
+#'                     preprocess_fn = function(x) gsub("^O", "0", x))
+#'
+#' # Convert with format specification
+#' df <- convert_column(df, "TIMESTAMP", "POSIXct",
+#'                     format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+convert_column <- function(df, col_name, target_type,
+                           preprocess_fn = NULL,
+                           verbose = TRUE,
+                           ...) {
+
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Converting {col_name} to {target_type} \n"))
+    cat(strrep("=", 60), "\n")
+  }
+
+  # Get conversion and check functions
+  converter <- get_type_func(target_type)
+  checker <- get_check_func(target_type)
+
+  # Check if already correct type
+  if (checker(df[[col_name]])) {
+    if (verbose) {
+      cat(glue("Column {col_name} is already {target_type}. No conversion needed.\n\n"))
+    }
+    return(df)
+  }
+
+  # Apply preprocessing if provided
+  if (!is.null(preprocess_fn)) {
+    if (verbose) cat("Applying preprocessing...\n")
+    df[[col_name]] <- preprocess_fn(df[[col_name]])
+  }
+
+  # Perform conversion with error handling
+  tryCatch({
+    if (verbose) cat(glue("Converting {col_name}...\n"))
+    df[[col_name]] <- converter(df[[col_name]], ...)
+
+    if (verbose) {
+      cat(glue("{col_name} is now: {class(df[[col_name]])[1]}\n\n"))
+    }
+  }, error = function(e) {
+    log_error(glue("Failed to convert {col_name}: {e$message}"))
+    stop(glue("Conversion failed for {col_name}: {e$message}"))
+  })
+
+  df
+}
+
+```
+
+
+```{r Function: convert to numeric}
+
+# convert column in df to numeric. Handle leading "O" --> 0 if fix_leading_o = TRUE.
+
+#' @param df A data frame
+#' @param col_name Name of the column to convert to numeric
+#' @param fix_leading_o gsub "O" --> 0
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TRUE) {
+  preprocess <- if (fix_leading_o) {
+    function(x) {
+      problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
+      if (verbose && length(problem_rows) > 0) {
+        cat(glue("Found {length(problem_rows)} non-numeric value(s), attempting to fix...\n"))
+      }
+      gsub("^O", "0", x)
+    }
+  } else {
+    NULL
+  }
+
+  convert_column(df, col_name, "numeric", preprocess_fn = preprocess, verbose = verbose)
+}
+```
 
 ```{r PRICE conversion}
-# Your code here
-
 bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
-head(bids$PRICE, 10)
+cat("\nFirst 10 PRICE values:\n")
+cat(head(bids$PRICE, 10), sep = "\n")
 ```
 
 > 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
 
+There are no NA values. Handled leading "O". No other issues that would cause type conversion to fail.
 
 ```{r PRICE na count}
 # Your code here
@@ -468,13 +684,44 @@ I am not finding any NA's after the extraction, but have not looked for outlier 
 
 ---
 
+```{r Function: RESPONSE_TIME conversion}
+
+#' Convert column to integer with digit extraction
+#'
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param extract_digits Whether to extract only digits before converting
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_integer <- function(df, col_name,
+                               extract_digits = FALSE,
+                               verbose = TRUE) {
+  preprocess <- if (extract_digits) {
+    function(x) {
+      if (verbose) cat("Extracting digits from string...\n")
+      gsub("[^0-9]", "", x)
+    }
+  } else {
+    NULL
+  }
+
+  convert_column(df, col_name, "integer",
+                 preprocess_fn = preprocess, verbose = verbose)
+}
+```
+
+
+
 ```{r RESPONSE_TIME conversion}
 # Your code here
 bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
-head(bids$RESPONSE_TIME, 10)
+cat("\nFirst 10 RESPONSE_TIME values:\n")
+cat(head(bids$RESPONSE_TIME, 10), sep = "\n")
 ```
 
 > 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
+
+No NA values in response time. Extracted numeric values from string, no other issues caused conversion to fail.
 
 ```{r RESPONSE_TIME NA count}
 # Your code here
@@ -502,6 +749,12 @@ Useful tools:
 
 ```{r}
 # Your code here
+
+n_to_sample <- 10
+sampled_data <- bids[sample(1:nrow(bids), n_to_sample, replace = FALSE), c("TIMESTAMP")]
+print(sampled_data)
+
+
 
 ```
 
@@ -614,6 +867,52 @@ TIMESTAMP_time - parsed time from TIMESTAMP_0
 TIMESTAMP - corrected time stamp column
 
 ---
+
+```{r Function: Convert to POSIXct code}
+
+#' Convert column to POSIXct timestamp
+#'
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param format Datetime format string
+#' @param tz Timezone
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_posixct <- function(df, col_name,
+                               format = "%Y-%m-%d %H:%M:%S",
+                               tz = "UTC",
+                               verbose = TRUE,
+                               date_col = "DATE_UTC",
+                               timestamp_col = "TIMESTAMP",
+                               output_col = "TIMESTAMP") {
+
+  # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
+  # but some dates are str "NA" and when dates are present, there are two different formats. Compared
+  # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
+  # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
+  # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
+  # column to TIMESTAMP_0.
+
+  df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
+
+  df <- df %>%
+    separate(
+      "TIMESTAMP_0",
+      into = c("TIMESTAMP_date", "TIMESTAMP_time"),
+      sep = " ",
+      remove = FALSE
+    ) %>%
+    mutate(
+      "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
+    )
+
+  convert_column(df, output_col, "POSIXct",
+                 format = format, tz = tz, verbose = verbose)
+}
+
+```
+
+
 ```{r }
 # Your code here
 
@@ -634,6 +933,10 @@ cat(glue("There are {TIMESTAMP_na_count} NAs in the TIMESTAMP column"))
 
 ```{r}
 # Your code here
+
+summary(bids$TIMESTAMP)
+cat("\n")
+range(bids$TIMESTAMP)
 
 ```
 
@@ -668,6 +971,21 @@ Already have code to check for duplicated, but need to exclude the row_id column
 ---
 ```{r}
 # Your code here
+
+#' Find duplicate rows
+#'
+#' @param df A data frame to check
+#' @param exclude_cols Column names to exclude from duplication check
+#' @return List with duplicate_indices and num_duplicates
+find_duplicates <- function(df, exclude_cols = c("row_id")) {
+  check_cols <- setdiff(names(df), exclude_cols)
+  duplicate_indices <- which(duplicated(df[, check_cols]))
+
+  list(
+    duplicate_indices = duplicate_indices,
+    num_duplicates = length(duplicate_indices)
+  )
+}
 
 duplicate_check <- find_duplicates(bids, exclude_cols = c("row_id"))
 duplicate_indices <- duplicate_check$duplicate_indices
