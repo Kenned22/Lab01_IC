@@ -146,7 +146,7 @@ that you've done Neal looks great!
 missing_columns <- check_columns(bids, expected_columns$column_name)
 cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
 
-bids_type_summary <- check_column_types(bids, expected_columns)
+bids_type_summary <- check_column_types(bids,  expected_columns)
 print(bids_type_summary)
 
 # I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
@@ -200,6 +200,8 @@ print(head(bids$PRICE, 10))
 > 2. In short sentences, describe what you see:
 >    - Is `PRICE` numeric or character?
 >    - Do you see obvious anomalies or strange values?
+
+The 'PRICE' column is currently a character vector. There are values that appear to be numeric amounts stored as character strings. No immediate obvious anomalies like negative values or non-numeric characters in the first 10 entries, but further checks could be done with adjusted scope.
 
 
 ## Create a clean numeric version of PRICE
