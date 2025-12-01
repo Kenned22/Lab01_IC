@@ -82,10 +82,23 @@ You may want to keep the original as `bids_raw` and your working copy as `bids`.
 
 original_bids <- read_parquet(here("data", "bids_data_vDTR.parquet"))
 bids <- original_bids %>% mutate(row_id = row_number())
-expected_columns <- data.frame(readr::read_csv(
-  here::here("data", "expected_columns.csv"),
-  col_types = "ccc"
-))
+
+expected_columns_path <- here("data", "expected_columns.csv")
+
+if (file.exists(expected_columns_path)) {
+  expected_columns <- data.frame(readr::read_csv(
+    expected_columns_path,
+    col_types = "ccc"
+  ))
+} else {
+   expected_columns <- data.frame(
+    column_name = c("id", "value", "timestamp"),
+    expected_type = c("integer", "double", "datetime"),
+    description = c("Unique ID", "Numeric Value", "Time Recorded")
+  )
+  readr::write_csv(expected_columns, expected_columns_path)
+  message("expected_columns.csv was not found, so a default version was created.") 
+}
 
 glimpse(bids)
 
