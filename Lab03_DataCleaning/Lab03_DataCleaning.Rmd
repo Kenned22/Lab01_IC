@@ -272,17 +272,49 @@ Now decide how to handle:
 ```{r}
 # Your code here
 
+summary(bids$PRICE)
+quantile(bids$PRICE, probs = seq(0, 1, 0.01), na.rm = TRUE)
+bids %>% 
+  filter(PRICE < 0 | PRICE %in% c(-999, 999, 9999)) %>% 
+  count(PRICE) %>% 
+  arrange(desc(n))
+
 ```
 
+-999 appears 12 times, this is a placeholder (missing value) and can be treated as NA
+There are several entries that are negative, these are invalud because prices can not be negative.
+
+
 > 2. Write down your **rules** for how to handle each type (e.g., set to `NA`, drop rows, cap values).
+
+Our rules for how to handle each "bad" prices are as follow:
+- values like -999, action is to set to NA, since -999 is a     common placeholder for missing or undefined values
+- negative values should be set to NA since prices can't be negative and should not be treated as a real price
+- implausibly high values (>10) set to na, since based on the data's distribution, prices above 10 are likely errors or outliers.
+  
+
 > 3. Implement those rules in a new variable (e.g., `PRICE_final`) using `dplyr::mutate()` and `dplyr::case_when()`.
 
 ```{r}
 # Your code here
 
+bids <- bids %>% 
+  mutate(PRICE_final = case_when(
+    PRICE <= 0 ~ NA_real_,
+    PRICE > 10 ~ NA_real_,
+    TRUE ~ PRICE))
+  
+
+
 ```
 
 > 4. Briefly describe your rules in text and justify them using the **validity** and **completeness** dimensions of data quality.
+
+The following rules were applied to clean the PRICE variable:
+Values less than or equal to 0, including values like -999, were set to NA because they are invalud and do not represent realistic bid prices.
+Values greater than 10 are also set to NA, as they are so far outside the typical range observed (99th % < 2.1) and are implausible.
+All other prices were kept as is.
+These rules improve the validity of the data by removing nonsensical/placeholder entries that could bias our analysis. They also enhance completeness by clearly identifying and marking missing or unusable values as NA, rather than leaving them as misleading numerical values.
 
 
 # Cleaning Categorical & String Fields (30–40 minutes)
