@@ -304,7 +304,7 @@ get_check_func <- function(target_type) {
 #'                     format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
 convert_column <- function(df, col_name, target_type,
                            preprocess_fn = NULL,
-                           new_col_name = NULL,
+                           output_col_name = NULL,
                            verbose = TRUE,
                            ...) {
 
@@ -327,27 +327,27 @@ convert_column <- function(df, col_name, target_type,
   }
 
   # Create new column name if not provided
-  if (is.null(new_col_name)) {
-    new_col_name <- paste0(col_name, "_clean")
+  if (is.null(output_col_name)) {
+    output_col_name <- paste0(col_name, "_clean")
   }
 
   # Apply preprocessing if provided
   if (!is.null(preprocess_fn)) {
     if (verbose) cat("Applying preprocessing...\n")
-    df[[new_col_name]] <- preprocess_fn(df[[col_name]])
+    df[[output_col_name]] <- preprocess_fn(df[[col_name]])
   }
 
   # Perform conversion with error handling
   tryCatch({
     if (verbose) cat(glue("Converting {col_name}...\n"))
-    df[[new_col_name]] <- converter(df[[col_name]], ...)
+    df[[output_col_name]] <- converter(df[[output_col_name]], ...)
 
     if (verbose) {
-      cat(glue("{new_col_name} is now: {class(df[[new_col_name]])[1]}\n\n"))
+      cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}\n\n"))
     }
   }, error = function(e) {
-    log_error(glue("Failed to convert {new_col_name}: {e$message}"))
-    stop(glue("Conversion failed for {new_col_name}: {e$message}"))
+    log_error(glue("Failed to convert {output_col_name}: {e$message}"))
+    stop(glue("Conversion failed for {output_col_name}: {e$message}"))
   })
 
   df
@@ -431,7 +431,7 @@ The code is not elegant and not the easiest to modify without getting into the g
 #' @param fix_leading_o gsub "O" --> 0
 #' @param verbose Whether to print messages
 #' @return Data frame with converted column
-convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TRUE) {
+convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading_o = FALSE, verbose = TRUE) {
   preprocess <- if (fix_leading_o) {
     function(x) {
       problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
@@ -444,14 +444,19 @@ convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TR
     NULL
   }
 
-  convert_column(df, col_name, "numeric", preprocess_fn = preprocess, verbose = verbose)
+  convert_column(df,
+                 col_name = col_name,
+                 target_type = "numeric",
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
 }
 ```
 
 ```{r PRICE conversion}
-bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
-cat("\nFirst 10 PRICE values:\n")
-cat(head(bids$PRICE, 10), sep = "\n")
+bids <- convert_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+cat("\nFirst 10 PRICE_clean values:\n")
+cat(head(bids$PRICE_clean, 10), sep = "\n")
 ```
 
 > 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
@@ -460,8 +465,8 @@ There are no NA values. Handled leading "O". No other issues that would cause ty
 
 ```{r PRICE na count}
 # Your code here
-na_prices <- sum(is.na(bids$PRICE))
-cat(glue("There are {na_prices} NA prices"))
+na_prices <- sum(is.na(bids$PRICE_clean))
+cat(glue("There are {na_prices} NA prices in the PRICE_clean column"))
 ```
 
 
@@ -481,11 +486,11 @@ Now decide how to handle:
 ```{r}
 # Your code here
 
-summary(bids$PRICE)
-quantile(bids$PRICE, probs = seq(0, 1, 0.01), na.rm = TRUE)
+summary(bids$PRICE_clean)
+quantile(bids$PRICE_clean, probs = seq(0, 1, 0.01), na.rm = TRUE)
 bids %>%
-  filter(PRICE < 0 | PRICE %in% c(-999, 999, 9999)) %>%
-  count(PRICE) %>%
+  filter(PRICE_clean < 0 | PRICE_clean %in% c(-999, 999, 9999)) %>%
+  count(PRICE_clean) %>%
   arrange(desc(n))
 
 ```
@@ -509,9 +514,9 @@ Our rules for how to handle each "bad" prices are as follow:
 
 bids <- bids %>%
   mutate(PRICE_final = case_when(
-    PRICE <= 0 ~ NA_real_,
-    PRICE > 10 ~ NA_real_,
-    TRUE ~ PRICE
+    PRICE_clean <= 0 ~ NA_real_,
+    PRICE_clean > 10 ~ NA_real_,
+    TRUE ~ PRICE_clean
   ))
 
 
@@ -687,6 +692,7 @@ I am not finding any NA's after the extraction, but have not looked for outlier 
 #' @return Data frame with converted column
 convert_to_integer <- function(df, col_name,
                                extract_digits = FALSE,
+                               output_col_name = NULL,
                                verbose = TRUE) {
   preprocess <- if (extract_digits) {
     function(x) {
@@ -698,7 +704,9 @@ convert_to_integer <- function(df, col_name,
   }
 
   convert_column(df, col_name, "integer",
-                 preprocess_fn = preprocess, verbose = verbose)
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
 }
 ```
 
@@ -706,9 +714,9 @@ convert_to_integer <- function(df, col_name,
 
 ```{r RESPONSE_TIME conversion}
 # Your code here
-bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
+bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE, output_col_name = "RESPONSE_TIME_clean")
 cat("\nFirst 10 RESPONSE_TIME values:\n")
-cat(head(bids$RESPONSE_TIME, 10), sep = "\n")
+cat(head(bids$RESPONSE_TIME_clean, 10), sep = "\n")
 ```
 
 > 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
@@ -717,7 +725,7 @@ No NA values in response time. Extracted numeric values from string, no other is
 
 ```{r RESPONSE_TIME NA count}
 # Your code here
-na_response_time <- sum(is.na(bids$RESPONSE_TIME))
+na_response_time <- sum(is.na(bids$RESPONSE_TIME_clean))
 cat(glue("There are {na_response_time} NA response times"))
 ```
 
@@ -876,7 +884,7 @@ convert_to_posixct <- function(df, col_name,
                                verbose = TRUE,
                                date_col = "DATE_UTC",
                                timestamp_col = "TIMESTAMP",
-                               output_col = "TIMESTAMP") {
+                               output_col = "TIMESTAMP_clean") {
 
   # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
   # but some dates are str "NA" and when dates are present, there are two different formats. Compared
@@ -898,8 +906,12 @@ convert_to_posixct <- function(df, col_name,
       "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
     )
 
-  convert_column(df, output_col, "POSIXct",
-                 format = format, tz = tz, verbose = verbose)
+  convert_column(df, output_col_name = output_col, target_type = "POSIXct",
+                 format = format,
+                 tz = tz,
+                 verbose = verbose,
+                 date_col = date_col,
+                 timestamp_col = timestamp_col)
 }
 
 ```
