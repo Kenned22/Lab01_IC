@@ -282,7 +282,7 @@ bids %>%
 ```
 
 -999 appears 12 times, this is a placeholder (missing value) and can be treated as NA
-There are several entries that are negative, these are invalud because prices can not be negative.
+There are several entries that are negative, these are invalid because prices can not be negative.
 
 
 > 2. Write down your **rules** for how to handle each type (e.g., set to `NA`, drop rows, cap values).
