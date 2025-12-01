@@ -302,8 +302,8 @@ bids <- bids %>%
   mutate(PRICE_final = case_when(
     PRICE <= 0 ~ NA_real_,
     PRICE > 10 ~ NA_real_,
-    TRUE ~ PRICE))
-  
+    TRUE ~ PRICE
+  ))
 
 
 ```
