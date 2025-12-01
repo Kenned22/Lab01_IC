@@ -1,4 +1,4 @@
-column_name,Expected_Type,Notes_Actual_Type
+column,Expected_Type,Notes_Actual_Type
 TIMESTAMP,POSIXct,TIMESTAMP_NTZ
 DATE_UTC,Date,DATE
 AUCTION_ID,character,VARCHAR

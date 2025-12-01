@@ -143,7 +143,7 @@ that you've done Neal looks great!
 # NEAL: I already did some work on this and have a summary function that looks at the bids df and the
 # expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
 
-missing_columns <- check_columns(bids, expected_columns$column_name)
+missing_columns <- check_columns(bids, expected_columns$column)
 cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
 
 bids_type_summary <- check_column_types(bids,  expected_columns)
