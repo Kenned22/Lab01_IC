@@ -392,14 +392,13 @@ bids <- bids %>%
 We detected incosistent region codes by using dplyr::count() to list all distinct values of DEVICE_GEO_REGION and observed multiple variations of "Oregon" such as "Or", "oregon", and "xor". We standardized these using string manipulation functions to detect case differences and common misspellings.
 The set-membership rule we enforced is that only region codes clearly representing Oregon, specifically "OR", "oregon", and "xor", are valid. All other values are treated as invalid and set to NA, since this dataset is supposed to contain only bids from Oregon.
 
-## DEVICE_GEO_ZIP: formats and sentinels
+## DEVICE_GEO_ZIP: formats and sentinels - Edwin Section
 
 Treat ZIP codes as **strings**, not numbers.
 
 > **Tasks:**
 >
 > 1. Convert ZIP codes to character and use `dplyr::count()` to inspect common values.
-
 
 ```{r}
 # Your code here
@@ -690,7 +689,7 @@ cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 
 > 6. In 2–3 sentences, explain your choice and connect it to the **uniqueness** dimension of data quality.
 
-## Out-of-range latitude/longitude (optional but recommended)
+## Out-of-range latitude/longitude (optional but recommended) - Edwin Section
 
 Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 
