@@ -342,13 +342,28 @@ Helpful string tools:
 ```{r}
 # Your code here
 
+bids %>% 
+  count(DEVICE_GEO_REGION, sort = TRUE)
+
 ```
 
 > 2. Identify **all values** that clearly correspond to **Oregon**, just coded inconsistently (e.g., extra punctuation, different case, misspellings).
 
+In this code I am converting everything to lowercase to make matching easier and using str_detect() to find variants
+
 
 ```{r}
 # Your code here
+
+bids %>% 
+  mutate(region_lower = stringr::str_to_lower(stringr::str_trim(DEVICE_GEO_REGION))) %>% 
+  count(region_lower, sort = TRUE) %>% 
+  filter(
+    str_detect(region_lower, "^or$")|
+    str_detect(region_lower, "oregon") | 
+    str_detect(region_lower, "xor") | 
+    str_detect(region_lower, "^or[^a-z]*$")
+  )
 
 ```
 
@@ -360,11 +375,22 @@ Helpful string tools:
 ```{r}
 # Your code here
 
+bids <- bids %>% 
+  mutate(
+    DEVICE_GEO_REGION_clean = case_when(
+      str_to_lower(str_trim(DEVICE_GEO_REGION)) %in% c("or", "oregon", "xor") ~ "OR",
+      TRUE ~ NA_character_
+    )
+  )
+
 ```
 
 > 4. In **2–3 sentences**, explain:
 >    - How you detected inconsistent codes,
 >    - The **set-membership rule** you are enforcing (valid region codes for this dataset).
+
+We detected incosistent region codes by using dplyr::count() to list all distinct values of DEVICE_GEO_REGION and observed multiple variations of "Oregon" such as "Or", "oregon", and "xor". We standardized these using string manipulation functions to detect case differences and common misspellings.
+The set-membership rule we enforced is that only region codes clearly representing Oregon, specifically "OR", "oregon", and "xor", are valid. All other values are treated as invalid and set to NA, since this dataset is supposed to contain only bids from Oregon.
 
 ## DEVICE_GEO_ZIP: formats and sentinels
 
