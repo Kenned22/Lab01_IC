@@ -91,7 +91,7 @@ if (file.exists(expected_columns_path)) {
     col_types = "ccc"
   ))
 } else {
-   expected_columns <- data.frame(
+  expected_columns <- data.frame(
     column_name = c("id", "value", "timestamp"),
     expected_type = c("integer", "double", "datetime"),
     description = c("Unique ID", "Numeric Value", "Time Recorded")
@@ -213,19 +213,12 @@ check_column_types <- function(df, expected_types) {
 ```
 
 
-
 ```{r type summary}
-# NEAL: I already did some work on this and have a summary function that looks at the bids df and the
-# expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
-
 missing_columns <- check_columns(bids, expected_columns$column)
 cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
 
 bids_type_summary <- check_column_types(bids,  expected_columns)
 print(bids_type_summary)
-
-# I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
-# as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
 
 ex <- bids %>% group_by(AUCTION_ID, PUBLISHER_ID) %>%  filter(n() > 1) %>% head(5)
 DT::datatable(ex,
@@ -240,79 +233,7 @@ DT::datatable(ex,
 ```
 
 
-# Fixing Numeric & Price Issues (30–40 minutes)
-
-Focus on the **PRICE** variable (and other numeric variables if needed).
-
-You should investigate:
-
-- **Type issues** (e.g., stored as character instead of numeric),
-- **Impossible values** (negative values, weird “huge” values),
-- **Sentinel codes** (e.g., `-999`),
-- Extra non-numeric characters.
-
-## Suggested tools
-
-- `class()`, `unique()`, `dplyr::count()`, `summary()`
-- `readr::parse_number()`
-- `as.numeric()`
-- `dplyr::mutate()`, `dplyr::case_when()`
-- `is.na()`, `sum(is.na(...))`
-- `quantile()` to inspect distributions
-
-## Inspect PRICE
-
-> **Tasks:**
->
-> 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
-
-```{r PRICE head}
-cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"))
-
-print(head(bids$PRICE, 10))
-```
-
-> 2. In short sentences, describe what you see:
->    - Is `PRICE` numeric or character?
->    - Do you see obvious anomalies or strange values?
-
-The 'PRICE' column is currently a character vector. There are values that appear to be numeric amounts stored as character strings. No immediate obvious anomalies like negative values or non-numeric characters in the first 10 entries, but further checks could be done with adjusted scope.
-
-
-## Create a clean numeric version of PRICE
-
-Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
-
-- Extracts numeric content from strings (if necessary),
-- Converts to numeric,
-- Keeps track of values that cannot be converted (they will become `NA`).
-
-> **Tasks:**
->
-> 1. Use one or more of these:
->    - `readr::parse_number()`
->    - `stringr::str_remove_all()`
->    - `as.numeric()`
->
->    To learn about their use, type `?` before either of them (e.g., `?readr::parse_number()`)
-
-
----
-
-NEAL:
-Already done. Two issues were identified and fixed:
-  1. prices are stored as character instead of numeric
-  2. there are some prices that the leading 0 is an "O". The code below fixes this.
-
-I overwrite the original column, but the original data is maintained in the original_bids dataframe.
-Can change if we need to.
-
-Code can be found in the src/data_cleaning.r file. Example usage can be found in the src/data_cleaning_example.r file.
-The code is not elegant and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
-
----
-
-```{r Functions: Type conversion}
+```{r Functions: Type conversion helper functions}
 
 # ==============================================================================
 # TYPE CONVERSION HELPERS
@@ -383,6 +304,7 @@ get_check_func <- function(target_type) {
 #'                     format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
 convert_column <- function(df, col_name, target_type,
                            preprocess_fn = NULL,
+                           new_col_name = NULL,
                            verbose = TRUE,
                            ...) {
 
@@ -404,23 +326,28 @@ convert_column <- function(df, col_name, target_type,
     return(df)
   }
 
+  # Create new column name if not provided
+  if (is.null(new_col_name)) {
+    new_col_name <- paste0(col_name, "_clean")
+  }
+
   # Apply preprocessing if provided
   if (!is.null(preprocess_fn)) {
     if (verbose) cat("Applying preprocessing...\n")
-    df[[col_name]] <- preprocess_fn(df[[col_name]])
+    df[[new_col_name]] <- preprocess_fn(df[[col_name]])
   }
 
   # Perform conversion with error handling
   tryCatch({
     if (verbose) cat(glue("Converting {col_name}...\n"))
-    df[[col_name]] <- converter(df[[col_name]], ...)
+    df[[new_col_name]] <- converter(df[[col_name]], ...)
 
     if (verbose) {
-      cat(glue("{col_name} is now: {class(df[[col_name]])[1]}\n\n"))
+      cat(glue("{new_col_name} is now: {class(df[[new_col_name]])[1]}\n\n"))
     }
   }, error = function(e) {
-    log_error(glue("Failed to convert {col_name}: {e$message}"))
-    stop(glue("Conversion failed for {col_name}: {e$message}"))
+    log_error(glue("Failed to convert {new_col_name}: {e$message}"))
+    stop(glue("Conversion failed for {new_col_name}: {e$message}"))
   })
 
   df
@@ -428,6 +355,72 @@ convert_column <- function(df, col_name, target_type,
 
 ```
 
+# Fixing Numeric & Price Issues (30–40 minutes)
+
+Focus on the **PRICE** variable (and other numeric variables if needed).
+
+You should investigate:
+
+- **Type issues** (e.g., stored as character instead of numeric),
+- **Impossible values** (negative values, weird “huge” values),
+- **Sentinel codes** (e.g., `-999`),
+- Extra non-numeric characters.
+
+## Suggested tools
+
+- `class()`, `unique()`, `dplyr::count()`, `summary()`
+- `readr::parse_number()`
+- `as.numeric()`
+- `dplyr::mutate()`, `dplyr::case_when()`
+- `is.na()`, `sum(is.na(...))`
+- `quantile()` to inspect distributions
+
+## Inspect PRICE
+
+> **Tasks:**
+>
+> 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
+
+```{r PRICE head}
+cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"))
+print(head(bids$PRICE, 10))
+```
+
+> 2. In short sentences, describe what you see:
+>    - Is `PRICE` numeric or character?
+>    - Do you see obvious anomalies or strange values?
+
+The 'PRICE' column is currently a character vector. There are values that appear to be numeric amounts stored as character strings. No immediate obvious anomalies like negative values or non-numeric characters in the first 10 entries, but further checks revealed there are some prices that the leading 0 is an "O".
+## Create a clean numeric version of PRICE
+
+Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
+
+- Extracts numeric content from strings (if necessary),
+- Converts to numeric,
+- Keeps track of values that cannot be converted (they will become `NA`).
+
+> **Tasks:**
+>
+> 1. Use one or more of these:
+>    - `readr::parse_number()`
+>    - `stringr::str_remove_all()`
+>    - `as.numeric()`
+>
+>    To learn about their use, type `?` before either of them (e.g., `?readr::parse_number()`)
+
+
+---
+
+NEAL:
+Already done.
+
+I overwrite the original column, but the original data is maintained in the original_bids dataframe.
+Can change if we need to.
+
+Code can be found in the src/data_cleaning.r file. Example usage can be found in the src/data_cleaning_example.r file.
+The code is not elegant and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
+
+---
 
 ```{r Function: convert to numeric}
 
