@@ -618,7 +618,6 @@ bids <- bids %>%
     DEVICE_GEO_ZIP = as.character(DEVICE_GEO_ZIP)
   )
 
-
 ```
 
 > 2. Identify suspicious ZIP values:
@@ -646,16 +645,10 @@ bids_suspicious %>%
 >    - Consider using `stringr::str_length()`, `stringr::str_detect()` with a regular expression pattern, and `stringr::str_pad()` if necessary.
 
 ```{r}
-# 
-bids <- bids %>%
-  mutate(
-    valid_length   = str_length(DEVICE_GEO_ZIP) == 5,
-    valid_numeric  = str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$"),
-    valid_oregon   = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$")
-  )
-#
-bids %>% count(valid_oregon)
+# checking for zipcode pattern
 
+bids %>% 
+  count(valid_oregon = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$"))
 
 ```
 
@@ -722,6 +715,9 @@ bids <- bids %>%
       NA                     # invalid → NA
     )
   )
+# drop unrequired columns 
+bids <- bids %>%
+  select(-starts_with("zipcode"))
 
 # inspect suspicious ZIPs that were cleaned
 
@@ -730,14 +726,9 @@ bids <- bids %>%
 
 ```
 
-```{r}
-head(bids)
-```
-
-
 > 5. In a short paragraph, describe your rule and why it is reasonable given the context (Oregon-only data).
 
-To clean the ZIP codes in our Oregon-only dataset, we apply rules that match how ZIP codes work in the state and use the location data to fill in gaps. Any missing ZIP codes are filled by mapping each record’s latitude and longitude to the ZIP Code Tabulation Area it falls within. We then tidy the results by trimming extra spaces, removing placeholder values like and keeping only valid Oregon ZIP codes, which must be five digits and start with “97.” This gives us a clean and realistic ZIP field that matches the geography of the data.
+To clean the ZIP codes in our Oregon-only dataset, we apply rules that match how ZIP codes work in the state and use the location data to fill in gaps. Any missing ZIP codes are filled by mapping each record’s latitude and longitude to the ZIP Code Tabulation Area it falls within. We then tidy the results by trimming extra spaces, removing placeholder values like and keeping only valid Oregon ZIP codes, which must be five digits and start with “97.” This gives us a clean and realistic ZIP field that matches the geography of the data with only 20 NAs remaining in the clean zip variable.
 
 ## RESPONSE_TIME: prefixes and extra characters
 
