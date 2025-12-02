@@ -41,7 +41,6 @@ Minimally, you will need these packages:
 ```{r loadpackages}
 library(tidyverse)
 library(arrow)
-
 library(logger)
 library(glue)
 library(dplyr)
@@ -610,7 +609,13 @@ Treat ZIP codes as **strings**, not numbers.
 > 1. Convert ZIP codes to character and use `dplyr::count()` to inspect common values.
 
 ```{r}
-# Your code here
+# converting to string
+
+bids <- bids %>%
+  mutate(
+    DEVICE_GEO_ZIP = as.character(DEVICE_GEO_ZIP)
+  )
+
 
 ```
 
@@ -620,7 +625,18 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Non-digit characters.
 
 ```{r}
-# Your code here
+# check for bids issues
+
+bids_suspicious <- bids %>%
+  filter(
+    is.na(DEVICE_GEO_ZIP) |                      # include NA ZIPs
+    nchar(DEVICE_GEO_ZIP) != 5 |                 # wrong length
+    !str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$") |  # contains non-digits
+    DEVICE_GEO_ZIP %in% sentinels                # sentinel codes
+  )
+
+bids_suspicious %>%
+  count(DEVICE_GEO_ZIP, sort = TRUE)
 
 ```
 
@@ -628,7 +644,16 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Consider using `stringr::str_length()`, `stringr::str_detect()` with a regular expression pattern, and `stringr::str_pad()` if necessary.
 
 ```{r}
-# Your code here
+# 
+bids <- bids %>%
+  mutate(
+    valid_length   = str_length(DEVICE_GEO_ZIP) == 5,
+    valid_numeric  = str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$"),
+    valid_oregon   = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$")
+  )
+#
+bids %>% count(valid_oregon)
+
 
 ```
 
@@ -638,7 +663,68 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Enforces your chosen ZIP pattern.
 
 ```{r}
-# Your code here
+options(tigris_use_cache = TRUE)
+
+# Download U.S. ZCTA polygons (2020)
+zips <- zctas(year = 2020)
+
+# Convert bids → sf object using lat/long
+df_sf <- st_as_sf(
+  bids,
+  coords = c("DEVICE_GEO_LONG", "DEVICE_GEO_LAT"),
+  crs = 4326   # WGS84
+)
+
+# Ensure ZCTAs use the same CRS as df_sf
+zips <- st_transform(zips, st_crs(df_sf))
+
+# map each point to the ZCTA polygon it falls in
+joined <- st_join(
+  df_sf,
+  zips[, c("ZCTA5CE20")],
+  join = st_within           # strict point-in-polygon
+)
+
+# Use ZCTA to fill missing ZIP codes
+bids$zipcode <- ifelse(
+  is.na(bids$DEVICE_GEO_ZIP),   # if original ZIP is missing
+  joined$ZCTA5CE20,             # use mapped ZIP
+  bids$DEVICE_GEO_ZIP           # else keep original
+)
+
+# Create DEVICE_GEO_ZIP_clean
+
+# Define sentinel ZIPs (invalid placeholders)
+sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+
+# Define pattern for valid U.S. 5-digit ZIP codes
+valid_zip_pattern <- "^[0-9]{5}$"
+
+bids <- bids %>%
+  mutate(
+    # Work with character format
+    zipcode = as.character(zipcode),
+    
+    # Trim whitespace
+    zipcode_trim = str_trim(zipcode),
+    
+    # Replace sentinel codes with NA
+    zipcode_no_sentinel = ifelse(zipcode_trim %in% sentinels,
+                                 NA,
+                                 zipcode_trim),
+    
+    # Enforce valid ZIP pattern (5 numeric digits)
+    DEVICE_GEO_ZIP_clean = ifelse(
+      str_detect(zipcode_no_sentinel, valid_zip_pattern),
+      zipcode_no_sentinel,   # keep valid ZIP
+      NA                     # invalid → NA
+    )
+  )
+
+# inspect suspicious ZIPs that were cleaned
+
+# table(bids$DEVICE_GEO_ZIP_clean, useNA = "always")
+
 
 ```
 
