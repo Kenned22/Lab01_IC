@@ -626,6 +626,9 @@ bids <- bids %>%
 >    - Non-digit characters.
 
 ```{r}
+# Define sentinel ZIP codes
+sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+
 # check for bids issues
 
 bids_suspicious <- bids %>%
@@ -1088,7 +1091,7 @@ cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 
 > 6. In 2–3 sentences, explain your choice and connect it to the **uniqueness** dimension of data quality.
 
-## Out-of-range latitude/longitude (optional but recommended) - Edwin Section
+## Out-of-range latitude/longitude (optional but recommended)
 
 Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 
