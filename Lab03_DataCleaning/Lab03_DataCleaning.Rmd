@@ -221,10 +221,10 @@ cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste
 bids_type_summary <- check_column_types(bids,  expected_columns)
 print(bids_type_summary)
 
-comparison %>%
-  kable("html", escape = FALSE, align = c("l", rep("c", ncol(comparison) - 1))) %>%
-  row_spec(which(!comparison$match), background = "#62ec0001") %>%
-  column_spec(seq_len(ncol(comparison)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
+bids_type_summary %>%
+  kable("html", escape = FALSE, align = c("l", rep("c", ncol(bids_type_summary) - 1))) %>%
+  row_spec(which(!bids_type_summary$match), background = "#62ec0001") %>%
+  column_spec(seq_len(ncol(bids_type_summary)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
   kable_styling(full_width = FALSE)
 
 ```
