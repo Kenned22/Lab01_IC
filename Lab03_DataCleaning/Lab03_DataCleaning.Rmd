@@ -602,7 +602,7 @@ bids <- bids %>%
 We detected inconsistent region codes by using dplyr::count() to list all distinct values of DEVICE_GEO_REGION and observed multiple variations of "Oregon" such as "Or", "oregon", and "xor". We standardized these using string manipulation functions to detect case differences and common misspellings.
 The set-membership rule we enforced is that only region codes clearly representing Oregon, specifically "OR", "oregon", and "xor", are valid. All other values are treated as invalid and set to NA, since this dataset is supposed to contain only bids from Oregon.
 
-## DEVICE_GEO_ZIP: formats and sentinels - Edwin Section
+## DEVICE_GEO_ZIP: formats and sentinels
 
 Treat ZIP codes as **strings**, not numbers.
 
@@ -1097,21 +1097,62 @@ Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 > 1. Use `summary()` or `dplyr::summarise()` to get the minimum and maximum latitude and longitude.
 
 ```{r}
-# Your code here
+# find summary for lat and long
+
+summary(bids[, c("DEVICE_GEO_LAT", "DEVICE_GEO_LONG")])
 
 ```
 
 > 2. Compare the ranges to what you know about **Oregon’s** geographic coordinates (you can approximate based on general US geography; no need for exact boundaries).
 
 ```{r}
-# Your code here
+# Compute dataset ranges
+coord_summary <- bids %>%
+  summarise(
+    min_lat  = min(DEVICE_GEO_LAT,  na.rm = TRUE),
+    max_lat  = max(DEVICE_GEO_LAT,  na.rm = TRUE),
+    min_long = min(DEVICE_GEO_LONG, na.rm = TRUE),
+    max_long = max(DEVICE_GEO_LONG, na.rm = TRUE)
+  )
+
+# 
+coord_summary %>%
+  mutate(
+    lat_within_oregon =
+      min_lat >= 42 & max_lat <= 46.5,
+
+    long_within_oregon =
+      min_long >= -125 & max_long <= -116
+  )
+# 
+if (coord_summary$min_lat >= 42 & coord_summary$max_lat <= 46.5) {
+  cat("Latitudes are consistent with Oregon.\n")
+} else {
+  cat("Latitudes include locations outside Oregon.\n")
+}
+
+if (coord_summary$min_long >= -125 & coord_summary$max_long <= -116) {
+  cat("Longitudes are consistent with Oregon.\n")
+} else {
+  cat("Longitudes include locations outside Oregon.\n")
+}
 
 ```
 
 > 3. Decide which coordinates are clearly **implausible**.
 
 ```{r}
-# Your code here
+# checking for coordinates outside the Oregon range
+
+bids_implausible_coords <- bids %>%
+  filter(
+    DEVICE_GEO_LAT  < 42   | DEVICE_GEO_LAT  > 46.5 |
+    DEVICE_GEO_LONG < -125 | DEVICE_GEO_LONG > -116
+  )
+# count
+
+bids_implausible_coords %>% nrow()
+
 
 ```
 
@@ -1120,11 +1161,33 @@ Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 >    - Implausible values are set to `NA` or corresponding rows are removed.
 
 ```{r}
-# Your code here
+# Define plausible Oregon bounding box
+lat_min <- 42
+lat_max <- 46.5
+long_min <- -125
+long_max <- -116
+
+bids <- bids %>%
+  mutate(
+    DEVICE_GEO_LAT_clean = ifelse(
+      DEVICE_GEO_LAT >= lat_min & DEVICE_GEO_LAT <= lat_max,
+      DEVICE_GEO_LAT,
+      NA
+    ),
+    
+    DEVICE_GEO_LONG_clean = ifelse(
+      DEVICE_GEO_LONG >= long_min & DEVICE_GEO_LONG <= long_max,
+      DEVICE_GEO_LONG,
+      NA
+    )
+  )
+
 
 ```
 
 > 5. Document the rules you used and why.
+
+The latitude and longitude values were cleaned using simple geographic rules based on Oregon’s expected coordinate range. Latitudes between 42 and 46.5 degrees and longitudes between –125 and –116 were considered plausible and retained. Values outside these bounds were treated as implausible for Oregon-only data and set to NA in the cleaned variables. This approach ensures that realistic Oregon locations are preserved while clearly incorrect coordinates are flagged.
 
 # Creating a Final Cleaned Dataset (10–15 minutes)
 
