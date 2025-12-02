@@ -730,8 +730,14 @@ bids <- bids %>%
 
 ```
 
+```{r}
+head(bids)
+```
+
+
 > 5. In a short paragraph, describe your rule and why it is reasonable given the context (Oregon-only data).
 
+To clean the ZIP codes in our Oregon-only dataset, we apply rules that match how ZIP codes work in the state and use the location data to fill in gaps. Any missing ZIP codes are filled by mapping each record’s latitude and longitude to the ZIP Code Tabulation Area it falls within. We then tidy the results by trimming extra spaces, removing placeholder values like and keeping only valid Oregon ZIP codes, which must be five digits and start with “97.” This gives us a clean and realistic ZIP field that matches the geography of the data.
 
 ## RESPONSE_TIME: prefixes and extra characters
 
