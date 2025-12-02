@@ -22,74 +22,76 @@ log_appender(appender_tee("logs/data_cleaning.log"))
 # # VALIDATION FUNCTIONS
 # # ==============================================================================
 
-# #' Check if expected columns exist in a data frame
-# #'
-# #' @param df A data frame to check
-# #' @param expected_columns Character vector of expected column names
-# #' @return Character vector of missing column names (invisible)
-# #' @examples
-# #' check_columns(df, c("id", "name", "age"))
-# check_columns <- function(df, expected_columns) {
-#   if (!is.list(expected_columns) && !is.character(expected_columns)) {
-#     msg <- "expected_columns must be a list or character vector"
-#     log_error(msg)
-#     stop(msg)
-#   }
+#' Check if expected columns exist in a data frame
+#'
+#' @param df A data frame to check
+#' @param expected_columns Character vector of expected column names
+#' @return Character vector of missing column names (invisible)
+#' @examples
+#' check_columns(df, c("id", "name", "age"))
+check_columns <- function(df, expected_columns) {
+  if (!is.list(expected_columns) && !is.character(expected_columns)) {
+    msg <- "expected_columns must be a list or character vector"
+    log_error(msg)
+    stop(msg)
+  }
+  
+  expected_columns <- as.character(expected_columns)
+  missing_columns <- setdiff(expected_columns, colnames(df))
+  
+  if (length(missing_columns) == length(expected_columns)) {
+    msg <- "All expected columns are missing from the dataframe"
+    log_error(msg)
+    stop(msg)
+  } else if (length(missing_columns) > 0) {
+    warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
+  }
+  
+  missing_columns
+}
 
-#   expected_columns <- as.character(expected_columns)
-#   missing_columns <- setdiff(expected_columns, colnames(df))
+#' Check column types against expected types
+#'
+#' @param df A data frame to check
+#' @param expected_types A data frame with columns: 'column', 'Expected_Type'
+#' @return A data frame comparing actual vs expected types
+#' @examples
+#' expected <- data.frame(
+#'   column = c("age", "name"),
+#'   Expected_Type = c("numeric", "character")
+#' )
+#' check_column_types(df, expected)
+check_column_types <- function(df, expected_types) {
+  if (is.null(expected_types$column) || length(expected_types$column) == 0) {
+    stop("expected_types must have a 'column' field with column names")
+  }
+  
+  if (!all(sapply(expected_types$Expected_Type, is.character))) {
+    stop("All values in Expected_Type must be character strings")
+  }
+  
+  # Get actual types
+  df_types <- sapply(df, function(col) class(col)[1])
+  
+  # Find common columns
+  common_cols <- intersect(names(df), expected_types$column)
+  
+  # Create comparison
+  type_comparison <- expected_types %>%
+    filter(.data$column %in% common_cols) %>%
+    mutate(
+      actual = df_types[.data$column],
+      .before = "Expected_Type"
+    ) %>%
+    mutate(
+      match = .data$actual == .data$Expected_Type,
+      .after = "Expected_Type"
+    )
+  
+  type_comparison
+}
 
-#   if (length(missing_columns) == length(expected_columns)) {
-#     msg <- "All expected columns are missing from the dataframe"
-#     log_error(msg)
-#     stop(msg)
-#   } else if (length(missing_columns) > 0) {
-#     warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
-#   }
 
-#   invisible(missing_columns)
-# }
-
-# #' Check column types against expected types
-# #'
-# #' @param df A data frame to check
-# #' @param expected_types A data frame with columns: 'column', 'Expected_Type'
-# #' @return A data frame comparing actual vs expected types
-# #' @examples
-# #' expected <- data.frame(
-# #'   column = c("age", "name"),
-# #'   Expected_Type = c("numeric", "character")
-# #' )
-# #' check_column_types(df, expected)
-# check_column_types <- function(df, expected_types) {
-#   if (is.null(expected_types$column) || length(expected_types$column) == 0) {
-#     stop("expected_types must have a 'column' field with column names")
-#   }
-
-#   if (!all(sapply(expected_types$Expected_Type, is.character))) {
-#     stop("All values in Expected_Type must be character strings")
-#   }
-
-#   # Get actual types
-#   df_types <- sapply(df, function(col) class(col)[1])
-
-#   # Find common columns
-#   common_cols <- intersect(names(df), expected_types$column)
-
-#   # Create comparison
-#   type_comparison <- expected_types %>%
-#     filter(.data$column %in% common_cols) %>%
-#     mutate(
-#       actual = df_types[.data$column],
-#       .before = "Expected_Type"
-#     ) %>%
-#     mutate(
-#       match = .data$actual == .data$Expected_Type,
-#       .after = "Expected_Type"
-#     )
-
-#   type_comparison
-# }
 
 # ==============================================================================
 # DATA QUALITY ASSESSMENT FUNCTIONS
