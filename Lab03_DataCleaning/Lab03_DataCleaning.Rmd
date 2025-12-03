@@ -1239,11 +1239,13 @@ Use the template below and fill it in with your team’s work. **One row (PRICE)
 | Variable | Problem Detected (brief) | Data Quality Dimension(s) | Cleaning Action (brief) |
 |----------|-------------------------|---------------------------|--------------------------|
 | PRICE | Includes non-numeric characters | Validity | Extract numeric portion and convert to numeric |
-| DEVICE_GEO_REGION | *(team describes)* | *(team selects)* | *(team describes)* |
-| DEVICE_GEO_ZIP | *(team describes)* | *(team selects)* | *(team describes)* |
-| RESPONSE_TIME | *(team describes)* | *(team selects)* | *(team describes)* |
-| TIMESTAMP | *(team describes)* | *(team selects)* | *(team describes)* |
-| Other variable(s) | *(optional)* | *(optional)* | *(optional)* |
+| DEVICE_GEO_REGION | *Inconsistent region codes* | *Consistency* | *Standardized all Oregon variants to "OR" and set non-Oregon values to NA.* |
+| DEVICE_GEO_ZIP | *Missing/Invalid ZIP codes* | *Completeness + Validity* | *Geocoded missing ZIPs from lat/long, filtered to Oregon-only ("97..." prefixes), trimmed spaces, removed placeholders.* |
+| RESPONSE_TIME | *Includes non-numeric characters* | *Validity* | *Stripped the text labels and kept only the numbers using regex* |
+| TIMESTAMP | *Inconsistent/incomplete TIMESTAMP formats* | *Completeness + Consistency* | *Combined DATE and TIMESTAMP columns into a single POSIX datetime column* |
+| DEVICE_GEO_LAT(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Latitudes from 42 to 46.5, set outliers to NA.* |
+| DEVICE_GEO_LONG(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Longitudes from –125 to –116, set outliers to NA.* |
+
 
 ## Reflection (5–8 sentences)
 
