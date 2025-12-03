@@ -41,7 +41,6 @@ Minimally, you will need these packages:
 ```{r loadpackages}
 library(tidyverse)
 library(arrow)
-
 library(logger)
 library(glue)
 library(dplyr)
@@ -54,8 +53,10 @@ library(jsonlite)
 library(knitr)
 library(kableExtra)
 library(DT)
-
-source(here("src", "data_cleaning.r"))
+library(tigris)   # for zctas()
+library(sf)       # for spatial functions
+library(stringr)  # for string cleaning
+# source(here("src", "data_cleaning.r"))
 ```
 
 - `tidyverse` (especially `dplyr`, `ggplot2`, `readr`, `stringr`)
@@ -91,7 +92,7 @@ if (file.exists(expected_columns_path)) {
     col_types = "ccc"
   ))
 } else {
-   expected_columns <- data.frame(
+  expected_columns <- data.frame(
     column_name = c("id", "value", "timestamp"),
     expected_type = c("integer", "double", "datetime"),
     description = c("Unique ID", "Numeric Value", "Time Recorded")
@@ -139,19 +140,96 @@ that you've done Neal looks great!
 
 ---
 
-```{r type summary}
-# NEAL: I already did some work on this and have a summary function that looks at the bids df and the
-# expected columns, as reported in the expected_columns.csv file. Can follow up with written explanation.
+```{r column check and type summary functions}
+#' Check if expected columns exist in a data frame
+#'
+#' @param df A data frame to check
+#' @param expected_columns Character vector of expected column names
+#' @return Character vector of missing column names (invisible)
+#' @examples
+#' check_columns(df, c("id", "name", "age"))
+check_columns <- function(df, expected_columns) {
+  if (!is.list(expected_columns) && !is.character(expected_columns)) {
+    msg <- "expected_columns must be a list or character vector"
+    log_error(msg)
+    stop(msg)
+  }
 
+  expected_columns <- as.character(expected_columns)
+  missing_columns <- setdiff(expected_columns, colnames(df))
+
+  if (length(missing_columns) == length(expected_columns)) {
+    msg <- "All expected columns are missing from the dataframe"
+    log_error(msg)
+    stop(msg)
+  } else if (length(missing_columns) > 0) {
+    warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
+  }
+
+  missing_columns
+}
+
+#' Check column types against expected types
+#'
+#' @param df A data frame to check
+#' @param expected_types A data frame with columns: 'column', 'Expected_Type'
+#' @return A data frame comparing actual vs expected types
+#' @examples
+#' expected <- data.frame(
+#'   column = c("age", "name"),
+#'   Expected_Type = c("numeric", "character")
+#' )
+#' check_column_types(df, expected)
+check_column_types <- function(df, expected_types) {
+  if (is.null(expected_types$column) || length(expected_types$column) == 0) {
+    stop("expected_types must have a 'column' field with column names")
+  }
+
+  if (!all(sapply(expected_types$Expected_Type, is.character))) {
+    stop("All values in Expected_Type must be character strings")
+  }
+
+  # Get actual types
+  df_types <- sapply(df, function(col) class(col)[1])
+
+  # Find common columns
+  common_cols <- intersect(names(df), expected_types$column)
+
+  # Create comparison
+  type_comparison <- expected_types %>%
+    filter(.data$column %in% common_cols) %>%
+    mutate(
+      actual = df_types[.data$column],
+      .before = "Expected_Type"
+    ) %>%
+    mutate(
+      match = .data$actual == .data$Expected_Type,
+      .after = "Expected_Type"
+    )
+
+  type_comparison
+}
+
+
+```
+
+
+```{r type summary}
 missing_columns <- check_columns(bids, expected_columns$column)
 cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
 
 bids_type_summary <- check_column_types(bids,  expected_columns)
 print(bids_type_summary)
 
-# I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
-# as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
+bids_type_summary %>%
+  kable("html", escape = FALSE, align = c("l", rep("c", ncol(bids_type_summary) - 1))) %>%
+  row_spec(which(!bids_type_summary$match), background = "#62ec0001") %>%
+  column_spec(seq_len(ncol(bids_type_summary)), extra_css = "padding-right: 30px; padding-left: 20px;") %>% # nolint
+  kable_styling(full_width = FALSE)
 
+```
+
+```{r uniquness example}
 ex <- bids %>% group_by(AUCTION_ID, PUBLISHER_ID) %>%  filter(n() > 1) %>% head(5)
 DT::datatable(ex,
               options = list(scrollX = TRUE, scrollY = "300px", pageLength = 5),
@@ -164,6 +242,128 @@ DT::datatable(ex,
 
 ```
 
+
+```{r Functions: Type conversion helper functions}
+
+# ==============================================================================
+# TYPE CONVERSION HELPERS
+# ==============================================================================
+
+#' Get type conversion function for a target type
+#'
+#' @param target_type Character string of target type
+#' @return Function that converts to target type
+get_type_func <- function(target_type) {
+  converters <- list(
+    character = as.character,
+    numeric = as.numeric,
+    integer = as.integer,
+    logical = as.logical,
+    Date = as.Date,
+    POSIXct = function(x, ...) as.POSIXct(x, ...)
+  )
+
+  if (!target_type %in% names(converters)) {
+    stop(glue("Unknown type: {target_type}\nSupported: {paste(names(converters), collapse = ', ')}"))
+  }
+
+  converters[[target_type]]
+}
+
+#' Get type checking function for a target type
+#'
+#' @param target_type Character string of target type
+#' @return Function that checks if value is of target type
+get_check_func <- function(target_type) {
+  checkers <- list(
+    character = is.character,
+    numeric = is.numeric,
+    integer = is.integer,
+    logical = is.logical,
+    Date = function(x) inherits(x, "Date"),
+    POSIXct = function(x) inherits(x, "POSIXct")
+  )
+
+  if (!target_type %in% names(checkers)) {
+    stop(glue("Unknown type: {target_type}"))
+  }
+
+  checkers[[target_type]]
+}
+
+# ==============================================================================
+# GENERIC TYPE CONVERSION FUNCTION
+# ==============================================================================
+
+#' Convert a column to a target type with optional preprocessing
+#'
+#' @param df A data frame
+#' @param col_name Name of the column to convert
+#' @param target_type Target type as string (e.g., "numeric", "POSIXct")
+#' @param preprocess_fn Optional preprocessing function
+#' @param verbose Whether to print conversion messages
+#' @param ... Additional arguments passed to conversion function
+#' @return Data frame with converted column
+#' @examples
+#' # Convert with preprocessing
+#' df <- convert_column(df, "PRICE", "numeric",
+#'                     preprocess_fn = function(x) gsub("^O", "0", x))
+#'
+#' # Convert with format specification
+#' df <- convert_column(df, "TIMESTAMP", "POSIXct",
+#'                     format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+convert_column <- function(df, col_name, target_type,
+                           preprocess_fn = NULL,
+                           output_col_name = NULL,
+                           verbose = TRUE,
+                           ...) {
+
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Converting {col_name} to {target_type} \n"))
+    cat(strrep("=", 60), "\n")
+  }
+
+  # Get conversion and check functions
+  converter <- get_type_func(target_type)
+  checker <- get_check_func(target_type)
+
+  # Check if already correct type
+  if (checker(df[[col_name]])) {
+    if (verbose) {
+      cat(glue("Column {col_name} is already {target_type}. No conversion needed.\n\n"))
+    }
+    return(df)
+  }
+
+  # Create new column name if not provided
+  if (is.null(output_col_name)) {
+    output_col_name <- paste0(col_name, "_clean")
+  }
+
+  # Apply preprocessing if provided
+  if (!is.null(preprocess_fn)) {
+    if (verbose) cat("Applying preprocessing...\n")
+    df[[output_col_name]] <- preprocess_fn(df[[col_name]])
+  }
+
+  # Perform conversion with error handling
+  tryCatch({
+    if (verbose) cat(glue("Converting {col_name}...\n"))
+    df[[output_col_name]] <- converter(df[[output_col_name]], ...)
+
+    if (verbose) {
+      cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}\n\n"))
+    }
+  }, error = function(e) {
+    log_error(glue("Failed to convert {output_col_name}: {e$message}"))
+    stop(glue("Conversion failed for {output_col_name}: {e$message}"))
+  })
+
+  df
+}
+
+```
 
 # Fixing Numeric & Price Issues (30–40 minutes)
 
@@ -192,8 +392,7 @@ You should investigate:
 > 1. Check the **type** of `PRICE` and inspect a sample of values (e.g., using `sample()` or `head()`).
 
 ```{r PRICE head}
-cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"))
-
+cat(glue("The starting class (type) of the PRICE column is {class(bids$PRICE)}"), "\n")
 print(head(bids$PRICE, 10))
 ```
 
@@ -201,9 +400,7 @@ print(head(bids$PRICE, 10))
 >    - Is `PRICE` numeric or character?
 >    - Do you see obvious anomalies or strange values?
 
-The 'PRICE' column is currently a character vector. There are values that appear to be numeric amounts stored as character strings. No immediate obvious anomalies like negative values or non-numeric characters in the first 10 entries, but further checks could be done with adjusted scope.
-
-
+The 'PRICE' column is currently a character vector. There are values that appear to be numeric amounts stored as character strings. No immediate obvious anomalies like negative values or non-numeric characters in the first 10 entries, but further checks revealed there are some prices that the leading 0 is an "O".
 ## Create a clean numeric version of PRICE
 
 Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
@@ -221,38 +418,51 @@ Create a **cleaned numeric version** (e.g., `PRICE_clean`) that:
 >
 >    To learn about their use, type `?` before either of them (e.g., `?readr::parse_number()`)
 
+```{r Function: convert to numeric}
 
----
+# convert column in df to numeric. Handle leading "O" --> 0 if fix_leading_o = TRUE.
 
-NEAL:
-Already done. Two issues were identified and fixed:
-  1. prices are stored as character instead of numeric
-  2. there are some prices that the leading 0 is an "O". The code below fixes this.
+#' @param df A data frame
+#' @param col_name Name of the column to convert to numeric
+#' @param fix_leading_o gsub "O" --> 0
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading_o = FALSE, verbose = TRUE) {
+  preprocess <- if (fix_leading_o) {
+    function(x) {
+      problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
+      if (verbose && length(problem_rows) > 0) {
+        cat(glue("Found {length(problem_rows)} non-numeric value(s), attempting to fix...\n"))
+      }
+      gsub("^O", "0", x)
+    }
+  } else {
+    NULL
+  }
 
-I overwrite the original column, but the original data is maintained in the original_bids dataframe.
-Can change if we need to.
-
-Code can be found in the src/data_cleaning.r file. Example usage can be found in the src/data_cleaning_example.r file.
-The code is not elegant and not the easiest to modify without getting into the guts of the code. Happy to fix if needed.
-
----
-
-Code
+  convert_column(df,
+                 col_name = col_name,
+                 target_type = "numeric",
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
+}
+```
 
 ```{r PRICE conversion}
-# Your code here
-
-bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
-head(bids$PRICE, 10)
+bids <- convert_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+cat("\nFirst 10 PRICE_clean values:\n")
+cat(head(bids$PRICE_clean, 10), sep = "\n")
 ```
 
 > 2. Count how many `NA`s you get in `PRICE_clean`. Explain why some values might be `NA` after parsing.
 
+There are no NA values. Handled leading "O". No other issues that would cause type conversion to fail.
 
 ```{r PRICE na count}
 # Your code here
-na_prices <- sum(is.na(bids$PRICE))
-cat(glue("There are {na_prices} NA prices"))
+na_prices <- sum(is.na(bids$PRICE_clean))
+cat(glue("There are {na_prices} NA prices in the PRICE_clean column"))
 ```
 
 
@@ -272,11 +482,11 @@ Now decide how to handle:
 ```{r}
 # Your code here
 
-summary(bids$PRICE)
-quantile(bids$PRICE, probs = seq(0, 1, 0.01), na.rm = TRUE)
+summary(bids$PRICE_clean)
+quantile(bids$PRICE_clean, probs = seq(0, 1, 0.01), na.rm = TRUE)
 bids %>%
-  filter(PRICE < 0 | PRICE %in% c(-999, 999, 9999)) %>%
-  count(PRICE) %>%
+  filter(PRICE_clean < 0 | PRICE_clean %in% c(-999, 999, 9999)) %>%
+  count(PRICE_clean) %>%
   arrange(desc(n))
 
 ```
@@ -300,9 +510,9 @@ Our rules for how to handle each "bad" prices are as follow:
 
 bids <- bids %>%
   mutate(PRICE_final = case_when(
-    PRICE <= 0 ~ NA_real_,
-    PRICE > 10 ~ NA_real_,
-    TRUE ~ PRICE
+    PRICE_clean <= 0 ~ NA_real_,
+    PRICE_clean > 10 ~ NA_real_,
+    TRUE ~ PRICE_clean
   ))
 
 
@@ -311,7 +521,7 @@ bids <- bids %>%
 > 4. Briefly describe your rules in text and justify them using the **validity** and **completeness** dimensions of data quality.
 
 The following rules were applied to clean the PRICE variable:
-Values less than or equal to 0, including values like -999, were set to NA because they are invalud and do not represent realistic bid prices.
+Values less than or equal to 0, including values like -999, were set to NA because they are invalid and do not represent realistic bid prices.
 Values greater than 10 are also set to NA, as they are so far outside the typical range observed (99th % < 2.1) and are implausible.
 All other prices were kept as is.
 These rules improve the validity of the data by removing nonsensical/placeholder entries that could bias our analysis. They also enhance completeness by clearly identifying and marking missing or unusable values as NA, rather than leaving them as misleading numerical values.
@@ -389,7 +599,7 @@ bids <- bids %>%
 >    - How you detected inconsistent codes,
 >    - The **set-membership rule** you are enforcing (valid region codes for this dataset).
 
-We detected incosistent region codes by using dplyr::count() to list all distinct values of DEVICE_GEO_REGION and observed multiple variations of "Oregon" such as "Or", "oregon", and "xor". We standardized these using string manipulation functions to detect case differences and common misspellings.
+We detected inconsistent region codes by using dplyr::count() to list all distinct values of DEVICE_GEO_REGION and observed multiple variations of "Oregon" such as "Or", "oregon", and "xor". We standardized these using string manipulation functions to detect case differences and common misspellings.
 The set-membership rule we enforced is that only region codes clearly representing Oregon, specifically "OR", "oregon", and "xor", are valid. All other values are treated as invalid and set to NA, since this dataset is supposed to contain only bids from Oregon.
 
 ## DEVICE_GEO_ZIP: formats and sentinels
@@ -400,9 +610,13 @@ Treat ZIP codes as **strings**, not numbers.
 >
 > 1. Convert ZIP codes to character and use `dplyr::count()` to inspect common values.
 
-
 ```{r}
-# Your code here
+# converting to string
+
+bids <- bids %>%
+  mutate(
+    DEVICE_GEO_ZIP = as.character(DEVICE_GEO_ZIP)
+  )
 
 ```
 
@@ -412,7 +626,21 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Non-digit characters.
 
 ```{r}
-# Your code here
+# Define sentinel ZIP codes
+sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+
+# check for bids issues
+
+bids_suspicious <- bids %>%
+  filter(
+    is.na(DEVICE_GEO_ZIP) |                      # include NA ZIPs
+    nchar(DEVICE_GEO_ZIP) != 5 |                 # wrong length
+    !str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$") |  # contains non-digits
+    DEVICE_GEO_ZIP %in% sentinels                # sentinel codes
+  )
+
+bids_suspicious %>%
+  count(DEVICE_GEO_ZIP, sort = TRUE)
 
 ```
 
@@ -420,7 +648,10 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Consider using `stringr::str_length()`, `stringr::str_detect()` with a regular expression pattern, and `stringr::str_pad()` if necessary.
 
 ```{r}
-# Your code here
+# checking for zipcode pattern
+
+bids %>% 
+  count(valid_oregon = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$"))
 
 ```
 
@@ -430,12 +661,77 @@ Treat ZIP codes as **strings**, not numbers.
 >    - Enforces your chosen ZIP pattern.
 
 ```{r}
-# Your code here
+options(tigris_use_cache = TRUE)
+
+# Download U.S. ZCTA polygons (2020)
+zips <- zctas(year = 2020)
+
+# Convert bids → sf object using lat/long
+df_sf <- st_as_sf(
+  bids,
+  coords = c("DEVICE_GEO_LONG", "DEVICE_GEO_LAT"),
+  crs = 4326   # WGS84
+)
+
+# Ensure ZCTAs use the same CRS as df_sf
+zips <- st_transform(zips, st_crs(df_sf))
+
+# map each point to the ZCTA polygon it falls in
+joined <- st_join(
+  df_sf,
+  zips[, c("ZCTA5CE20")],
+  join = st_within           # strict point-in-polygon
+)
+
+# Use ZCTA to fill missing ZIP codes
+bids$zipcode <- ifelse(
+  is.na(bids$DEVICE_GEO_ZIP),   # if original ZIP is missing
+  joined$ZCTA5CE20,             # use mapped ZIP
+  bids$DEVICE_GEO_ZIP           # else keep original
+)
+
+# Create DEVICE_GEO_ZIP_clean
+
+# Define sentinel ZIPs (invalid placeholders)
+sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+
+# Define pattern for valid U.S. 5-digit ZIP codes
+valid_zip_pattern <- "^[0-9]{5}$"
+
+bids <- bids %>%
+  mutate(
+    # Work with character format
+    zipcode = as.character(zipcode),
+    
+    # Trim whitespace
+    zipcode_trim = str_trim(zipcode),
+    
+    # Replace sentinel codes with NA
+    zipcode_no_sentinel = ifelse(zipcode_trim %in% sentinels,
+                                 NA,
+                                 zipcode_trim),
+    
+    # Enforce valid ZIP pattern (5 numeric digits)
+    DEVICE_GEO_ZIP_clean = ifelse(
+      str_detect(zipcode_no_sentinel, valid_zip_pattern),
+      zipcode_no_sentinel,   # keep valid ZIP
+      NA                     # invalid → NA
+    )
+  )
+# drop unrequired columns 
+bids <- bids %>%
+  select(-starts_with("zipcode"))
+
+# inspect suspicious ZIPs that were cleaned
+
+# table(bids$DEVICE_GEO_ZIP_clean, useNA = "always")
+
 
 ```
 
 > 5. In a short paragraph, describe your rule and why it is reasonable given the context (Oregon-only data).
 
+To clean the ZIP codes in our Oregon-only dataset, we apply rules that match how ZIP codes work in the state and use the location data to fill in gaps. Any missing ZIP codes are filled by mapping each record’s latitude and longitude to the ZIP Code Tabulation Area it falls within. We then tidy the results by trimming extra spaces, removing placeholder values like and keeping only valid Oregon ZIP codes, which must be five digits and start with “97.” This gives us a clean and realistic ZIP field that matches the geography of the data with only 20 NAs remaining in the clean zip variable.
 
 ## RESPONSE_TIME: prefixes and extra characters
 
@@ -450,7 +746,12 @@ The `RESPONSE_TIME` variable may include:
 > 1. Use a small `sample()` of `RESPONSE_TIME` to inspect the raw patterns.
 
 ```{r}
-# Your code here
+n_to_sample <- 10
+sampled_data <- bids[sample(1:nrow(bids), n_to_sample, replace = FALSE), c("RESPONSE_TIME")]
+print(sampled_data)
+
+
+
 
 ```
 
@@ -458,31 +759,61 @@ The `RESPONSE_TIME` variable may include:
 >    - Remove any “RESPONSE_TIME:” prefixes (including likely typos),
 >    - Strip extra non-numeric characters from the end,
 >    - Convert the remaining content to a numeric type.
+
+  Will exctract all numeric values in the string. These are the response times and will be extracted regardless of the prefix.
+
 > 3. Implement your rule in a cleaned variable (e.g., `RESPONSE_TIME_clean`) using `stringr::str_replace()` or related functions and `as.numeric()`.
 
+```{r Function: RESPONSE_TIME conversion}
 
----
+#' Convert column to integer with digit extraction
+#'
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param extract_digits Whether to extract only digits before converting
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_integer <- function(df, col_name,
+                               extract_digits = FALSE,
+                               output_col_name = NULL,
+                               verbose = TRUE) {
+  preprocess <- if (extract_digits) {
+    function(x) {
+      if (verbose) cat("Extracting digits from string...\n")
+      gsub("[^0-9]", "", x)
+    }
+  } else {
+    NULL
+  }
 
-Again, i am using the code from the src/data_cleaning.r file. I extract numeric values from the RESPONSE_TIME column.
-I am not finding any NA's after the extraction, but have not looked for outlier values or sentinel codes.
-
----
+  convert_column(df, col_name, "integer",
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
+}
+```
 
 ```{r RESPONSE_TIME conversion}
 # Your code here
-bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
-head(bids$RESPONSE_TIME, 10)
+bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE, output_col_name = "RESPONSE_TIME_clean")
+cat("\nFirst 10 RESPONSE_TIME values:\n")
+cat(head(bids$RESPONSE_TIME_clean, 10), sep = "\n")
 ```
 
 > 4. Count how many `NA`s you get in `RESPONSE_TIME_clean` and briefly interpret what those `NA`s mean.
 
+No NA values in response time. Extracted numeric values from string, no other issues caused conversion to fail.
+
 ```{r RESPONSE_TIME NA count}
 # Your code here
-na_response_time <- sum(is.na(bids$RESPONSE_TIME))
+na_response_time <- sum(is.na(bids$RESPONSE_TIME_clean))
 cat(glue("There are {na_response_time} NA response times"))
 ```
 
 > 5. Connect this to the idea of **regular-expression patterns** as a tool for enforcing validity.
+If we wanted to check that the prefix was spelled "correctly", we could have used a regular-expression pattern to match "RESPONSE_TIME". We decided to instead use a regex pattern to look for string representations of numeric values. This way we are only extracting the relevent information. This method is not infallible, but for our use-case it appears to work well.
+
+
 
 # Date–Time Cleaning: TIMESTAMP (20–30 minutes)
 
@@ -503,13 +834,23 @@ Useful tools:
 ```{r}
 # Your code here
 
+n_to_sample <- 10
+sampled_data <- bids[sample(1:nrow(bids), n_to_sample, replace = FALSE), c("TIMESTAMP")]
+print(sampled_data)
+
+num_hyphen_dates <- sum(stringr::str_detect(bids$TIMESTAMP, "-"))
+cat(glue("Number of TIMESTAMP values containing '-': {num_hyphen_dates}"), "\n")
+
+num_slash_dates <- sum(stringr::str_detect(bids$TIMESTAMP, "/"))
+cat(glue("Number of TIMESTAMP values containing '/': {num_slash_dates}"), "\n")
 ```
 
 > 2. Use `stringr::str_detect()` to count how many timestamps use `"-"` versus `"/"` in the date.
-
+Number of TIMESTAMP values containing '-': 421614 
+Number of TIMESTAMP values containing '/': 1157 
 ---
 
-NEAL: Did some exploring of the TIMESTAMP col but deleted most of the code once I identified the issues. The original messy code can be found at the bottom of src/data_cleaning_example.r file. Have to go back to commit 97b3c8c to see original code. Will repeat some of the relevant parts below.
+Did some exploring of the TIMESTAMP col to identify the issue(s) present. The messy code can be found below.
 
 TL;DR
 The code below is messy and inefficient, but it was how I (NEAL) explored the TIMESTAMP and DATE cols. My conclusion, and solution, was to concatenate the date from DATE_UTC and time from TIMESTAMP as strings into an new column and then convert to POSIX.
@@ -587,8 +928,11 @@ cat(sprintf("Number of NA values in TIMESTAMP_posixct: %d\n", length(na_posixct_
 ```
 
 > 3. Summarize in 1–2 sentences what you observe.
+We observed that the TIMESTAMP column had several issues
+  1) "NA" in place of a date
+  2) multiple date formats mm/dd/yy and yy-mm-dd 
 
-
+We explored the DATE column and confirmed that all dates available in the TIMESTAMP column (regardless of format) matched the date in DATE. With this information, we decided to concat the date from DATE and time from TIMESTAMP to form a TIMESTAMP_clean column.
 
 ## Parse TIMESTAMP into a POSIXct variable
 
@@ -599,21 +943,57 @@ cat(sprintf("Number of NA values in TIMESTAMP_posixct: %d\n", length(na_posixct_
 >    - Specify a time zone (e.g., `"UTC"`).
 
 
----
+Our DATE and TIMESTAMP cleaning code was written before we realized that we could use the lubridate package to convert a timestamp with multiple date formats. Our method still results in a uniformly formatted TIMESTAMP_clean
 
-NEAL:
+```{r Function: Convert to POSIXct code}
 
-Have code to clean up the TIMESTAMP col. Solution was to concatenate the date from the DATE_UTC column (consistent formatting and NA free), and the time from the TIMESTAMP col (consistent formatting and NA free). Did check to ensure all non-NA dates in TIMESTAMP col were equal to that in the DATE col.
+#' Convert column to POSIXct timestamp
+#'
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param format Datetime format string
+#' @param tz Timezone
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_posixct <- function(df, col_name,
+                               format = "%Y-%m-%d %H:%M:%S",
+                               tz = "UTC",
+                               verbose = TRUE,
+                               date_col = "DATE_UTC",
+                               timestamp_col = "TIMESTAMP",
+                               output_col = "TIMESTAMP_clean") {
 
-The final code does the above concatenation and then conversion to POSIX. See convert_to_posixct() in src/data_cleaning.r for code.
+  # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
+  # but some dates are str "NA" and when dates are present, there are two different formats. Compared
+  # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
+  # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
+  # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
+  # column to TIMESTAMP_0.
 
-Added cols to bids
-TIMESTAMP_0 - original TIMESTAMP column
-TIMESTAMP_date - parsed date from TIMESTAMP_0
-TIMESTAMP_time - parsed time from TIMESTAMP_0
-TIMESTAMP - corrected time stamp column
+  # df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
 
----
+  df <- df %>%
+    separate(
+      "TIMESTAMP",
+      into = c("TIMESTAMP_date", "TIMESTAMP_time"),
+      sep = " ",
+      remove = FALSE
+    ) %>%
+    mutate(
+      "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
+    )
+
+  convert_column(df, col_name = output_col, output_col_name = output_col, target_type = "POSIXct",
+                 format = format,
+                 tz = tz,
+                 verbose = verbose,
+                 date_col = date_col,
+                 timestamp_col = timestamp_col)
+}
+
+```
+
+
 ```{r }
 # Your code here
 
@@ -635,11 +1015,17 @@ cat(glue("There are {TIMESTAMP_na_count} NAs in the TIMESTAMP column"))
 ```{r}
 # Your code here
 
+summary(bids$TIMESTAMP_clean)
+cat("\n")
+range(bids$TIMESTAMP_clean)
+
 ```
 
 > 4. Briefly comment on:
 >    - Whether the time range seems reasonable,
 >    - What kinds of entries failed to parse (if any).
+
+A time span of ~8 hours seems reasonable for the data. The range is ("2025-10-21 20:49:05", "2025-10-22 04:32:59"). We do not have any parsing failures or NAs present in the cleaned TIMESTAMP column.
 
 # Keys, Duplicates, and Out-of-Range Values (20–30 minutes)
 
@@ -668,6 +1054,21 @@ Already have code to check for duplicated, but need to exclude the row_id column
 ---
 ```{r}
 # Your code here
+
+#' Find duplicate rows
+#'
+#' @param df A data frame to check
+#' @param exclude_cols Column names to exclude from duplication check
+#' @return List with duplicate_indices and num_duplicates
+find_duplicates <- function(df, exclude_cols = c("row_id")) {
+  check_cols <- setdiff(names(df), exclude_cols)
+  duplicate_indices <- which(duplicated(df[, check_cols]))
+
+  list(
+    duplicate_indices = duplicate_indices,
+    num_duplicates = length(duplicate_indices)
+  )
+}
 
 duplicate_check <- find_duplicates(bids, exclude_cols = c("row_id"))
 duplicate_indices <- duplicate_check$duplicate_indices
@@ -699,21 +1100,62 @@ Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 > 1. Use `summary()` or `dplyr::summarise()` to get the minimum and maximum latitude and longitude.
 
 ```{r}
-# Your code here
+# find summary for lat and long
+
+summary(bids[, c("DEVICE_GEO_LAT", "DEVICE_GEO_LONG")])
 
 ```
 
 > 2. Compare the ranges to what you know about **Oregon’s** geographic coordinates (you can approximate based on general US geography; no need for exact boundaries).
 
 ```{r}
-# Your code here
+# Compute dataset ranges
+coord_summary <- bids %>%
+  summarise(
+    min_lat  = min(DEVICE_GEO_LAT,  na.rm = TRUE),
+    max_lat  = max(DEVICE_GEO_LAT,  na.rm = TRUE),
+    min_long = min(DEVICE_GEO_LONG, na.rm = TRUE),
+    max_long = max(DEVICE_GEO_LONG, na.rm = TRUE)
+  )
+
+# 
+coord_summary %>%
+  mutate(
+    lat_within_oregon =
+      min_lat >= 42 & max_lat <= 46.5,
+
+    long_within_oregon =
+      min_long >= -125 & max_long <= -116
+  )
+# 
+if (coord_summary$min_lat >= 42 & coord_summary$max_lat <= 46.5) {
+  cat("Latitudes are consistent with Oregon.\n")
+} else {
+  cat("Latitudes include locations outside Oregon.\n")
+}
+
+if (coord_summary$min_long >= -125 & coord_summary$max_long <= -116) {
+  cat("Longitudes are consistent with Oregon.\n")
+} else {
+  cat("Longitudes include locations outside Oregon.\n")
+}
 
 ```
 
 > 3. Decide which coordinates are clearly **implausible**.
 
 ```{r}
-# Your code here
+# checking for coordinates outside the Oregon range
+
+bids_implausible_coords <- bids %>%
+  filter(
+    DEVICE_GEO_LAT  < 42   | DEVICE_GEO_LAT  > 46.5 |
+    DEVICE_GEO_LONG < -125 | DEVICE_GEO_LONG > -116
+  )
+# count
+
+bids_implausible_coords %>% nrow()
+
 
 ```
 
@@ -722,11 +1164,38 @@ Look at `DEVICE_GEO_LAT` and `DEVICE_GEO_LONG`.
 >    - Implausible values are set to `NA` or corresponding rows are removed.
 
 ```{r}
-# Your code here
+# Define plausible Oregon bounding box
+lat_min <- 42
+lat_max <- 46.5
+long_min <- -125
+long_max <- -116
+
+bids <- bids %>%
+  mutate(
+    DEVICE_GEO_LAT_clean = ifelse(
+      DEVICE_GEO_LAT >= lat_min & DEVICE_GEO_LAT <= lat_max,
+      DEVICE_GEO_LAT,
+      NA
+    ),
+    
+    DEVICE_GEO_LONG_clean = ifelse(
+      DEVICE_GEO_LONG >= long_min & DEVICE_GEO_LONG <= long_max,
+      DEVICE_GEO_LONG,
+      NA
+    )
+  )
+
 
 ```
 
+```{r}
+glimpse(bids)
+```
+
+
 > 5. Document the rules you used and why.
+
+The latitude and longitude values were cleaned using simple geographic rules based on Oregon’s expected coordinate range. Latitudes between 42 and 46.5 degrees and longitudes between –125 and –116 were considered plausible and retained. Values outside these bounds were treated as implausible for Oregon-only data and set to NA in the cleaned variables. This approach ensures that realistic Oregon locations are preserved while clearly incorrect coordinates are flagged.
 
 # Creating a Final Cleaned Dataset (10–15 minutes)
 
@@ -735,7 +1204,7 @@ Now pull everything together.
 > **Tasks:**
 >
 > 1. Create a final cleaned dataset (e.g., `bids_clean`) that:
->    - Uses your cleaned variables (`PRICE_final`, `DEVICE_GEO_REGION_clean`, `DEVICE_GEO_ZIP_clean`, `RESPONSE_TIME_clean`, `TIMESTAMP_clean`, cleaned lat/long, etc.),
+>    - Uses your cleaned variables (`PRICE_final`, `DEVICE_GEO_REGION_clean`, `DEVICE_GEO_ZIP_clean`, `RESPONSE_TIME_clean`, `TIMESTAMP_clean`, `DEVICE_GEO_LAT_clean`, `DEVICE_GEO_LONG_clean`, etc.),
 >    - Drops unnecessary intermediate columns (e.g., `_raw`, helper strings) that you don’t need for analysis.
 
 ```{r}
@@ -770,11 +1239,13 @@ Use the template below and fill it in with your team’s work. **One row (PRICE)
 | Variable | Problem Detected (brief) | Data Quality Dimension(s) | Cleaning Action (brief) |
 |----------|-------------------------|---------------------------|--------------------------|
 | PRICE | Includes non-numeric characters | Validity | Extract numeric portion and convert to numeric |
-| DEVICE_GEO_REGION | *(team describes)* | *(team selects)* | *(team describes)* |
-| DEVICE_GEO_ZIP | *(team describes)* | *(team selects)* | *(team describes)* |
-| RESPONSE_TIME | *(team describes)* | *(team selects)* | *(team describes)* |
-| TIMESTAMP | *(team describes)* | *(team selects)* | *(team describes)* |
-| Other variable(s) | *(optional)* | *(optional)* | *(optional)* |
+| DEVICE_GEO_REGION | *Inconsistent region codes* | *Consistency* | *Standardized all Oregon variants to "OR" and set non-Oregon values to NA.* |
+| DEVICE_GEO_ZIP | *Missing/Invalid ZIP codes* | *Completeness + Validity* | *Geocoded missing ZIPs from lat/long, filtered to Oregon-only ("97..." prefixes), trimmed spaces, removed placeholders.* |
+| RESPONSE_TIME | *Includes non-numeric characters* | *Validity* | *Stripped the text labels and kept only the numbers using regex* |
+| TIMESTAMP | *Inconsistent/incomplete TIMESTAMP formats* | *Completeness + Consistency* | *Combined DATE and TIMESTAMP columns into a single POSIX datetime column* |
+| DEVICE_GEO_LAT(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Latitudes from 42 to 46.5, set outliers to NA.* |
+| DEVICE_GEO_LONG(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Longitudes from –125 to –116, set outliers to NA.* |
+
 
 ## Reflection (5–8 sentences)
 
@@ -784,3 +1255,9 @@ Write a short reflection addressing:
 - Which functions or workflows (e.g., `mutate()`, `case_when()`, `str_*()`, `parse_date_time()`, `distinct()`) were most valuable?
 - One thing you will do **differently** the next time you receive a new messy dataset.
 - Whether/how you used generative AI for this lab and how it affected your understanding.
+
+*The task of clearing DEVICE_GEO_ZIP was the most time-consuming, because the step of download 2020(year) U.S. ZIP Code Tabulation Area(ZCTA) polygons and the step of using ZCTA to fill missing ZIP codes take us a total of 5 mins to run the code.*
+*The task of clearing DEVICE_GEO_REGION was the most surprising, because about 15 thousand data entries use “xor” to represent Oregon, and we have no idea why the data collector did this.*
+*‘mutate()’ + ‘case_when(), were most valuable for rule-based transformations,‘str_extract()’ was most valuable for text/number separation,‘parse_date_time()’ was most valuable for datetime standardization.*
+*If we receive a new messy dataset including ZIP data, we will try to find a different way for clearing ZIP data so not to sit there and wait 5 mins to run a code.*
+*We use generative AI to determine what code meets our requirements and how to fix errors when the code occurs, and determine which are the unnecessary intermediate columns that we can drop for the final cleaned dataset.*
