@@ -56,7 +56,7 @@ errors if needed.
 ---
 
 ### **2. Bid Behavior & Competitiveness**
->[insert name here] is going to be working on this question
+>Edwin is going to be working on this question
 
 * **How do bid amounts differ between winning and losing bids?**
 * **Is there a relationship between bid amount and the probability of winning an auction?**
