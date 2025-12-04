@@ -1,6 +1,7 @@
 source("src/data_cleaning.r")
 library(here)
 
+
 #------------------------------------------
 # LOAD EXPECTED BIDS COLUMNS FROM CSV
 #------------------------------------------
@@ -35,6 +36,42 @@ cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste
 bids_type_summary <- check_column_types(bids,  expected_columns)
 print(bids_type_summary)
 
+#------------------------------------------
+# CONVERT PRICE TO NUMERIC
+#------------------------------------------
+
+
+
+price_pipe <- function(df, 
+                       col_name, 
+                       output_col_name = "PRICE_clean", 
+                       fix_leading_o = TRUE, 
+                       verbose = TRUE){
+  
+  df <- convert_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+  df <- df %>%
+    mutate(PRICE_final = case_when(
+      "{output_col_name}" <= 0 ~ NA_real_,
+      "{output_col_name}" > 10 ~ NA_real_,
+      TRUE ~ "{output_col_name}"
+    ))
+  df
+  
+}
+
+bids <- price_pipe(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+
+
+# bids <- convert_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+# cat("\nFirst 10 PRICE_clean values:\n")
+# cat(head(bids$PRICE_clean, 10), sep = "\n")
+# 
+# bids <- bids %>%
+#   mutate(PRICE_final = case_when(
+#     PRICE_clean <= 0 ~ NA_real_,
+#     PRICE_clean > 10 ~ NA_real_,
+#     TRUE ~ PRICE_clean
+#   ))
 
 
 # ==============================================================================

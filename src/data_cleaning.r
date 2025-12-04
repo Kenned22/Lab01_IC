@@ -258,11 +258,11 @@ get_type_func <- function(target_type) {
     Date = as.Date,
     POSIXct = function(x, ...) as.POSIXct(x, ...)
   )
-
+  
   if (!target_type %in% names(converters)) {
     stop(glue("Unknown type: {target_type}\nSupported: {paste(names(converters), collapse = ', ')}"))
   }
-
+  
   converters[[target_type]]
 }
 
@@ -279,11 +279,11 @@ get_check_func <- function(target_type) {
     Date = function(x) inherits(x, "Date"),
     POSIXct = function(x) inherits(x, "POSIXct")
   )
-
+  
   if (!target_type %in% names(checkers)) {
     stop(glue("Unknown type: {target_type}"))
   }
-
+  
   checkers[[target_type]]
 }
 
@@ -310,19 +310,20 @@ get_check_func <- function(target_type) {
 #'                     format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
 convert_column <- function(df, col_name, target_type,
                            preprocess_fn = NULL,
+                           output_col_name = NULL,
                            verbose = TRUE,
                            ...) {
-
+  
   if (verbose) {
     cat("\n", strrep("=", 60), "\n")
     cat(glue("Converting {col_name} to {target_type} \n"))
     cat(strrep("=", 60), "\n")
   }
-
+  
   # Get conversion and check functions
   converter <- get_type_func(target_type)
   checker <- get_check_func(target_type)
-
+  
   # Check if already correct type
   if (checker(df[[col_name]])) {
     if (verbose) {
@@ -330,26 +331,38 @@ convert_column <- function(df, col_name, target_type,
     }
     return(df)
   }
-
+  
+  # Create new column name if not provided
+  if (is.null(output_col_name)) {
+    output_col_name <- paste0(col_name, "_clean")
+  }
+  
   # Apply preprocessing if provided
   if (!is.null(preprocess_fn)) {
     if (verbose) cat("Applying preprocessing...\n")
-    df[[col_name]] <- preprocess_fn(df[[col_name]])
+    df[[output_col_name]] <- preprocess_fn(df[[col_name]])
   }
-
+  
   # Perform conversion with error handling
   tryCatch({
     if (verbose) cat(glue("Converting {col_name}...\n"))
-    df[[col_name]] <- converter(df[[col_name]], ...)
-
+    df[[output_col_name]] <- converter(df[[output_col_name]], ...)
+    
     if (verbose) {
-      cat(glue("{col_name} is now: {class(df[[col_name]])[1]}\n\n"))
+      cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}\n\n"))
     }
   }, error = function(e) {
-    log_error(glue("Failed to convert {col_name}: {e$message}"))
-    stop(glue("Conversion failed for {col_name}: {e$message}"))
+    log_error(glue("Failed to convert {output_col_name}: {e$message}"))
+    stop(glue("Conversion failed for {output_col_name}: {e$message}"))
   })
-
+  
+  
+  if (verbose) {
+    num_NA = sum(is.na(df[[output_col_name]]))
+    cat(glue("NA COUNT: \n There are {num_NA} NAs in {output_col_name}.\n\n")) 
+  }
+  
+  
   df
 }
 
@@ -357,14 +370,14 @@ convert_column <- function(df, col_name, target_type,
 # CONVERSION WRAPPERS
 # ==============================================================================
 
-#' Convert column to numeric with optional preprocessing
-#'
+# convert column in df to numeric. Handle leading "O" --> 0 if fix_leading_o = TRUE.
+
 #' @param df A data frame
-#' @param col_name Name of column to convert
-#' @param fix_leading_o Whether to replace leading 'O' with '0'
+#' @param col_name Name of the column to convert to numeric
+#' @param fix_leading_o gsub "O" --> 0
 #' @param verbose Whether to print messages
 #' @return Data frame with converted column
-convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TRUE) {
+convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading_o = FALSE, verbose = TRUE) {
   preprocess <- if (fix_leading_o) {
     function(x) {
       problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
@@ -376,8 +389,13 @@ convert_to_numeric <- function(df, col_name, fix_leading_o = FALSE, verbose = TR
   } else {
     NULL
   }
-
-  convert_column(df, col_name, "numeric", preprocess_fn = preprocess, verbose = verbose)
+  
+  convert_column(df,
+                 col_name = col_name,
+                 target_type = "numeric",
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
 }
 
 #' #' Convert column to POSIXct timestamp
