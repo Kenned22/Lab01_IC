@@ -1225,6 +1225,30 @@ Now pull everything together.
 
 ```{r}
 # Your code here
+#since some of the data cleaning happened after I created the bid_nodup I need to adjust
+
+# Recreate deduplicated version from latest bids
+bids_nodup <- bids %>%
+  distinct(across(-row_id), .keep_all = TRUE)
+
+# Create final cleaned dataset
+bids_clean <- bids_nodup %>%
+  select(
+    row_id,
+    AUCTION_ID,
+    PUBLISHER_ID,
+    PRICE_final,
+    DEVICE_GEO_REGION_clean,
+    DEVICE_GEO_ZIP_clean,
+    RESPONSE_TIME_clean,
+    TIMESTAMP_clean,
+    DEVICE_GEO_LAT_clean,
+    DEVICE_GEO_LONG_clean,
+    BID_WON,
+    DEVICE_TYPE,
+    SIZE
+  )
+
 
 ```
 
@@ -1233,12 +1257,17 @@ Now pull everything together.
 ```{r}
 # Your code here
 
+# View the result & verify all cleaned data made it in
+glimpse(bids_clean)
+
 ```
 
 > 3. Optionally, write the cleaned dataset to disk (for your own future use) using something like `save()` (see `?save` for its use and an example) to save in `.RData` format **but do not commit the cleaned data file** to the remote repository.
 
 ```{r}
 # Your code here (optional)
+
+
 
 ```
 
