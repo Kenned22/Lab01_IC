@@ -1239,11 +1239,13 @@ Use the template below and fill it in with your team’s work. **One row (PRICE)
 | Variable | Problem Detected (brief) | Data Quality Dimension(s) | Cleaning Action (brief) |
 |----------|-------------------------|---------------------------|--------------------------|
 | PRICE | Includes non-numeric characters | Validity | Extract numeric portion and convert to numeric |
-| DEVICE_GEO_REGION | *(team describes)* | *(team selects)* | *(team describes)* |
-| DEVICE_GEO_ZIP | *(team describes)* | *(team selects)* | *(team describes)* |
-| RESPONSE_TIME | *(team describes)* | *(team selects)* | *(team describes)* |
-| TIMESTAMP | *(team describes)* | *(team selects)* | *(team describes)* |
-| Other variable(s) | *(optional)* | *(optional)* | *(optional)* |
+| DEVICE_GEO_REGION | *Inconsistent region codes* | *Consistency* | *Standardized all Oregon variants to "OR" and set non-Oregon values to NA.* |
+| DEVICE_GEO_ZIP | *Missing/Invalid ZIP codes* | *Completeness + Validity* | *Geocoded missing ZIPs from lat/long, filtered to Oregon-only ("97..." prefixes), trimmed spaces, removed placeholders.* |
+| RESPONSE_TIME | *Includes non-numeric characters* | *Validity* | *Stripped the text labels and kept only the numbers using regex* |
+| TIMESTAMP | *Inconsistent/incomplete TIMESTAMP formats* | *Completeness + Consistency* | *Combined DATE and TIMESTAMP columns into a single POSIX datetime column* |
+| DEVICE_GEO_LAT(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Latitudes from 42 to 46.5, set outliers to NA.* |
+| DEVICE_GEO_LONG(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Longitudes from –125 to –116, set outliers to NA.* |
+
 
 ## Reflection (5–8 sentences)
 
@@ -1253,3 +1255,9 @@ Write a short reflection addressing:
 - Which functions or workflows (e.g., `mutate()`, `case_when()`, `str_*()`, `parse_date_time()`, `distinct()`) were most valuable?
 - One thing you will do **differently** the next time you receive a new messy dataset.
 - Whether/how you used generative AI for this lab and how it affected your understanding.
+
+*The task of clearing DEVICE_GEO_ZIP was the most time-consuming, because the step of download 2020(year) U.S. ZIP Code Tabulation Area(ZCTA) polygons and the step of using ZCTA to fill missing ZIP codes take us a total of 5 mins to run the code.*
+*The task of clearing DEVICE_GEO_REGION was the most surprising, because about 15 thousand data entries use “xor” to represent Oregon, and we have no idea why the data collector did this.*
+*‘mutate()’ + ‘case_when(), were most valuable for rule-based transformations,‘str_extract()’ was most valuable for text/number separation,‘parse_date_time()’ was most valuable for datetime standardization.*
+*If we receive a new messy dataset including ZIP data, we will try to find a different way for clearing ZIP data so not to sit there and wait 5 mins to run a code.*
+*We use generative AI to determine what code meets our requirements and how to fix errors when the code occurs, and determine which are the unnecessary intermediate columns that we can drop for the final cleaned dataset.*

@@ -1,0 +1,224 @@
+---
+title: "Ethics and Practice in Data Science Final Project"
+author: "International Commuters"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+#Overview & Goals
+
+This markdown file will be the place where we can conduct our exploratory data analysis.
+
+Below you will find the questions that we are using to explore the data and who is 
+responsible for conducting the data analysis associated with that question.
+
+By the end of this process we will have as a team:
+
+1. Imported the cleaned dataset from Lab 3
+
+2. All of the EDA questions examined with clear code & written explanations of the results.
+
+3. Data visualization for the various EDAs.
+    - One question to resolve is - is Lilly creating all the viz or should this be the responsibility 
+      the people assigned the questions.
+    - Either way we need one coherent theme across all viz to be imported into the presentation
+    
+4. A coherent final presentation (in a separate powerpoint created by Lilly), along with a clear 
+   assignment of who is presenting what.
+    
+*General notes: 
+>Some example code for cleaning and data analysis will be pulled into the presentation,
+so make sure you are annotating code as you go so we can explain what each line does if needed.
+
+>keep committing your progress with clear messages so we can see contributions and troubleshoot
+errors if needed.
+
+#Task Assignment
+
+### **1. Traffic & Volume Patterns**
+
+* **How does bidding volume change across hours of the day and days of the week?**
+* **When are the peak bidding periods, and what might explain those spikes?**
+
+---
+
+### **2. Bid Behavior & Competitiveness**
+
+* **How do bid amounts differ between winning and losing bids?**
+* **Is there a relationship between bid amount and the probability of winning an auction?**
+* **Do certain advertisers consistently place higher or lower bids compared to others?**
+
+---
+
+### **3. Auction Outcomes**
+
+* **Which features (e.g., bid amount, time of day, advertiser) are most predictive of a win?**
+* **How does the clearing price compare to the submitted bid amount across auctions?**
+* **Are there systematic differences in outcomes across devices, regions, or ad categories?**
+
+---
+
+### **4. Data Quality–Driven Questions**
+
+* **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
+* **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
+
+---
+
+#Setup
+
+##Packages
+```{r loadpackages}
+
+library(tidyverse)
+library(arrow)
+library(logger)
+library(glue)
+library(dplyr)
+library(tidyr)
+library(rlang)
+library(lubridate)
+library(tictoc)
+library(here)
+library(jsonlite)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(tigris)   # for zctas()
+library(sf)       # for spatial functions
+library(stringr)  # for string cleaning
+# source(here("src", "data_cleaning.r"))
+
+#Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
+
+```
+
+
+*Note: please try to use tidyverse packages and functions, we want to make sure everyone is familiar
+with the functions we are using.
+
+#Import the cleaned dataset
+
+```{r}
+
+```
+
+
+#Run Exploratory Data Analysis 
+
+### **1. Traffic & Volume Patterns**
+
+
+
+### **2. Bid Behavior & Competitiveness**
+
+
+
+### **3. Auction Outcomes**
+
+
+
+### **4. Data Quality–Driven Questions**
+
+
+#Data Visualization
+
+#Synthesis
+
+*Notes: Things to make clear in the sythesis portion of this all for our own use:
+
+  >What were points of uncertainity? What steps did we take to address them and how could they still be showing     up?
+  >How did we clean and prepare the data set for our work? What choices did we make and how did we standardize?
+  
+#Presentation Assignment:
+
+##We will decide who is generating what info and transferring it to the slides.
+##We also need to decide who will present what and how to field questions.
+
+Final presentation ask:
+Your final presentation, in **20–30 minutes**, should tell a clear, professional story of your team’s
+data-cleaning workflow, exploratory analysis, and collaboration practices. The goal is to
+demonstrate not only what you found, but how you worked as a data science team.
+
+Things we need to include in the final presentation:
+
+Key Issues You Found
+Examples include:
+• Missingness patterns
+• Formatting inconsistencies (dates, numeric/character mismatches, categorical typos)
+• Duplicates
+• Outliers or implausible values
+• Structural issues (names, types, consistency)
+
+Your Cleaning Strategy
+For each issue:
+• What you observed
+• Why it was a problem
+• Principle behind your fix (e.g., “We chose this imputation strategy because…”)
+• Concise R code or pseudo-code
+Focus on justifying decisions, not on full code dumps.
+
+Reproducibility and Workflow
+Highlight:
+• Git usage (branches, PRs, merge conflicts)
+• Script modularity and readability
+• R Markdown / Quarto documentation
+• Naming conventions and folder structure
+
+EDA
+Overview Patterns
+Show:
+• Distributions
+• Key relationships
+• Missingness profiles
+• Surprising patterns
+
+Deep Dives on Guiding Questions
+For each:
+• State the question
+• Show relevant figures
+• Interpret results clearly
+• Connect to cleaning decisions
+
+Visualization Quality
+Ensure:
+• Clear labels/titles
+• Good color choices
+• No clutter
+• Interpretation accompanies each visual
+
+Insights
+Summarize:
+• 3–5 most important findings
+• What the data suggests overall
+• Uncertainties or next steps
+
+Collaboration Reflection
+Discuss:
+• What went well in your workflow
+• What was challenging
+• Lessons learned for future projects
+• How GitHub, Jira, and RStudio supported collaboration
+
+GitHub Repository Checklist
+Confirm your repo includes:
+• Clean README
+• Data cleaning scripts
+• EDA scripts (.qmd or .Rmd)
+• Clear folder structure (data/, R/, figs/)
+• Kanban snapshot
+• Evidence of teamwork (commit history, pull requests, etc.)
+
+  
