@@ -97,8 +97,8 @@ library(knitr)
 library(kableExtra)
 library(DT)
 library(tigris)   # for zctas()
-#library(sf)       # for spatial functions
-#library(stringr)  # for string cleaning
+library(sf)       # for spatial functions
+library(stringr)  # for string cleaning
 # source(here("src", "data_cleaning.r"))
 
 #Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
