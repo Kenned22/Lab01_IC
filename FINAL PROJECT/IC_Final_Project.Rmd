@@ -65,7 +65,7 @@ errors if needed.
 ---
 
 ### **3. Auction Outcomes**
->[insert name here] is going to be working on this question
+>Bingtang is going to be working on this question
 
 * **Which features (e.g., bid amount, time of day, advertiser) are most predictive of a win?**
 * **How does the clearing price compare to the submitted bid amount across auctions?**
