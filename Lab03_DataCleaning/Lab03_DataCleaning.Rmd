@@ -135,9 +135,6 @@ expected columns, as reported in the expected_columns.csv file. Can follow up wi
 I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
 as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
 
-I made a slight change to the code to help it run even if the expected csv is not there, so far work
-that you've done Neal looks great!
-
 ---
 
 ```{r column check and type summary functions}
@@ -1040,6 +1037,7 @@ Using your earlier reasoning:
 
 ```{r}
 # Your code here
+#Neal left a note saying there was already code to check for duplicates, have him confirm and adjust comment here
 
 ```
 
@@ -1082,14 +1080,32 @@ cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 >    - Drop exact duplicates?
 >    - Keep first occurrence and drop the rest?
 >    - Something else?
+
+We will be dropping exact full-row duplicates from the dataset. These duplicates represent
+records taht are identical across all the relevant variables and likely result from data collection
+and/or ingestion errors.
+
+We will be keeping only the first occurence of each unique row and removing subsequent duplicates. This will ensure that we retain one valid representation of each bid while eliminating redundancy that could distort summaries and analysis results.
+
+No additional rules will be implemented.Removing duplicates based on content was sufficient to clean this aspect of the dataset.
+
 > 5. Implement your rule and create a de-duplicated dataset (e.g., `bids_nodup`).
 
 ```{r}
 # Your code here
 
+#creating a de-duplicated dataset, minus 'row_id'
+bids_nodup <- bids %>%
+  distinct(across(-row_id), .keep_all = TRUE)
+
+#Original rows: 443969, After de-duplication: 441535
+
 ```
 
 > 6. In 2–3 sentences, explain your choice and connect it to the **uniqueness** dimension of data quality.
+
+We identified and removed 2,434 exact duplicate rows from the dataset, reducing it from 443,969 to 441,535 records. These duplicates were identical across all relevant columns), indicating redundancy without any added information. Removing them improves the uniqueness dimension of data quality by ensuring that each record represents a distinct bid event, preventing duplicate entries from skewing analysis or inflating counts.
+
 
 ## Out-of-range latitude/longitude (optional but recommended)
 
