@@ -650,7 +650,7 @@ bids_suspicious %>%
 ```{r}
 # checking for zipcode pattern
 
-bids %>% 
+bids %>%
   count(valid_oregon = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$"))
 
 ```
@@ -702,15 +702,15 @@ bids <- bids %>%
   mutate(
     # Work with character format
     zipcode = as.character(zipcode),
-    
+
     # Trim whitespace
     zipcode_trim = str_trim(zipcode),
-    
+
     # Replace sentinel codes with NA
     zipcode_no_sentinel = ifelse(zipcode_trim %in% sentinels,
                                  NA,
                                  zipcode_trim),
-    
+
     # Enforce valid ZIP pattern (5 numeric digits)
     DEVICE_GEO_ZIP_clean = ifelse(
       str_detect(zipcode_no_sentinel, valid_zip_pattern),
@@ -718,7 +718,7 @@ bids <- bids %>%
       NA                     # invalid → NA
     )
   )
-# drop unrequired columns 
+# drop unrequired columns
 bids <- bids %>%
   select(-starts_with("zipcode"))
 
@@ -846,8 +846,8 @@ cat(glue("Number of TIMESTAMP values containing '/': {num_slash_dates}"), "\n")
 ```
 
 > 2. Use `stringr::str_detect()` to count how many timestamps use `"-"` versus `"/"` in the date.
-Number of TIMESTAMP values containing '-': 421614 
-Number of TIMESTAMP values containing '/': 1157 
+Number of TIMESTAMP values containing '-': 421614
+Number of TIMESTAMP values containing '/': 1157
 ---
 
 Did some exploring of the TIMESTAMP col to identify the issue(s) present. The messy code can be found below.
@@ -930,7 +930,7 @@ cat(sprintf("Number of NA values in TIMESTAMP_posixct: %d\n", length(na_posixct_
 > 3. Summarize in 1–2 sentences what you observe.
 We observed that the TIMESTAMP column had several issues
   1) "NA" in place of a date
-  2) multiple date formats mm/dd/yy and yy-mm-dd 
+  2) multiple date formats mm/dd/yy and yy-mm-dd
 
 We explored the DATE column and confirmed that all dates available in the TIMESTAMP column (regardless of format) matched the date in DATE. With this information, we decided to concat the date from DATE and time from TIMESTAMP to form a TIMESTAMP_clean column.
 
@@ -1038,16 +1038,20 @@ Using your earlier reasoning:
 > 1. Choose one variable or a combination of variables that you **believe should uniquely identify** a row (a key).
 > 2. Use `dplyr::count()` to check whether that key is truly unique or if there are duplicates.
 
+There is no set of cols that we believe can use used as a unique key. To remedy this, we added a row_id column to the bids dataframe to use as a unique key. See earlier work for why there is no good unique key in the original dataset
+
 ```{r}
 # Your code here
+unique_ids <- dplyr::count(bids, row_id)
+num_unique_ids <- length(unique(bids$row_id))
+cat(glue("nrows == num_unique_ids: {num_unique_ids == nrow(bids)}"))
 
 ```
 
 > 3. Check for **full-row duplicates** using `dplyr::distinct()` or by counting occurrences across all columns.
 
----
+We are checking for duplicates across all columns except row_id, which we know is unique.
 
-NEAL:
 
 Already have code to check for duplicated, but need to exclude the row_id column from the check. Using duplicated() function which should only identify a row as a duplicated if it has already shown up, i.e. row of first occurrence is not listed in duplicate_indices
 
@@ -1083,13 +1087,43 @@ cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 >    - Keep first occurrence and drop the rest?
 >    - Something else?
 > 5. Implement your rule and create a de-duplicated dataset (e.g., `bids_nodup`).
+we are keeping the first occurance and dropping all other duplciated rows
+
 
 ```{r}
 # Your code here
+remove_duplicates <- function(df, exclude_cols = NULL, verbose = TRUE) {
+  original_rows <- nrow(df)
 
+  if (!is.null(exclude_cols)) {
+    check_cols <- setdiff(names(df), exclude_cols)
+    duplicated_mask <- duplicated(df[, check_cols])
+  } else {
+    duplicated_mask <- duplicated(df)
+  }
+
+  clean_df <- df[!duplicated_mask, ]
+  removed_rows <- original_rows - nrow(clean_df)
+
+  if (verbose) {
+    cat(glue("Removed {removed_rows} duplicate rows."),"\n")
+    cat(glue("Remaining rows: {nrow(clean_df)}\n"))
+  }
+  list(
+    df = clean_df,
+    removed_indices = removed_rows
+  )
+}
+duplicate_handler <- remove_duplicates(bids, exclude_cols = c("row_id"))
+bids_nodup <- duplicate_handler["df"]
+removed_indices <- duplicate_handler["removed_indices"]
 ```
 
 > 6. In 2–3 sentences, explain your choice and connect it to the **uniqueness** dimension of data quality.
+
+We added a key to ensure that each row can be uniquely identified. For duplicate rows, we retained the first occurrence and removed all subsequent repeats. This approach preserves all available data while preventing over-counting of identical measurements.
+
+However, because no combination of existing columns guarantees a truly unique identifier, there is a change, although small, that we delete a unique row. This could occur if two rows contain identical information but are in fact distinct. While this scenario is highly unlikely, it cannot be ruled out entirely.
 
 ## Out-of-range latitude/longitude (optional but recommended)
 
@@ -1118,7 +1152,7 @@ coord_summary <- bids %>%
     max_long = max(DEVICE_GEO_LONG, na.rm = TRUE)
   )
 
-# 
+#
 coord_summary %>%
   mutate(
     lat_within_oregon =
@@ -1127,7 +1161,7 @@ coord_summary %>%
     long_within_oregon =
       min_long >= -125 & max_long <= -116
   )
-# 
+#
 if (coord_summary$min_lat >= 42 & coord_summary$max_lat <= 46.5) {
   cat("Latitudes are consistent with Oregon.\n")
 } else {
@@ -1177,7 +1211,7 @@ bids <- bids %>%
       DEVICE_GEO_LAT,
       NA
     ),
-    
+
     DEVICE_GEO_LONG_clean = ifelse(
       DEVICE_GEO_LONG >= long_min & DEVICE_GEO_LONG <= long_max,
       DEVICE_GEO_LONG,
