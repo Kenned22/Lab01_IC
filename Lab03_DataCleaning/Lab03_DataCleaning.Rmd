@@ -135,9 +135,6 @@ expected columns, as reported in the expected_columns.csv file. Can follow up wi
 I already answered the unique key question in lab 2. There is no set of cols that I feel confident can be used
 as a unique key. I added a row_id column to the bids dataframe to use as a unique key.
 
-I made a slight change to the code to help it run even if the expected csv is not there, so far work
-that you've done Neal looks great!
-
 ---
 
 ```{r column check and type summary functions}
@@ -1086,6 +1083,15 @@ cat("first 10 duplicate rows: ",duplicate_indices[1:10])
 >    - Drop exact duplicates?
 >    - Keep first occurrence and drop the rest?
 >    - Something else?
+
+We will be dropping exact full-row duplicates from the dataset. These duplicates represent
+records taht are identical across all the relevant variables and likely result from data collection
+and/or ingestion errors.
+
+We will be keeping only the first occurence of each unique row and removing subsequent duplicates. This will ensure that we retain one valid representation of each bid while eliminating redundancy that could distort summaries and analysis results.
+
+No additional rules will be implemented.Removing duplicates based on content was sufficient to clean this aspect of the dataset.
+
 > 5. Implement your rule and create a de-duplicated dataset (e.g., `bids_nodup`).
 we are keeping the first occurance and dropping all other duplciated rows
 
@@ -1243,6 +1249,30 @@ Now pull everything together.
 
 ```{r}
 # Your code here
+#since some of the data cleaning happened after I created the bid_nodup I need to adjust
+
+# Recreate deduplicated version from latest bids
+bids_nodup <- bids %>%
+  distinct(across(-row_id), .keep_all = TRUE)
+
+# Create final cleaned dataset
+bids_clean <- bids_nodup %>%
+  select(
+    row_id,
+    AUCTION_ID,
+    PUBLISHER_ID,
+    PRICE_final,
+    DEVICE_GEO_REGION_clean,
+    DEVICE_GEO_ZIP_clean,
+    RESPONSE_TIME_clean,
+    TIMESTAMP_clean,
+    DEVICE_GEO_LAT_clean,
+    DEVICE_GEO_LONG_clean,
+    BID_WON,
+    DEVICE_TYPE,
+    SIZE
+  )
+
 
 ```
 
@@ -1251,12 +1281,17 @@ Now pull everything together.
 ```{r}
 # Your code here
 
+# View the result & verify all cleaned data made it in
+glimpse(bids_clean)
+
 ```
 
 > 3. Optionally, write the cleaned dataset to disk (for your own future use) using something like `save()` (see `?save` for its use and an example) to save in `.RData` format **but do not commit the cleaned data file** to the remote repository.
 
 ```{r}
 # Your code here (optional)
+
+
 
 ```
 

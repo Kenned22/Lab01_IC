@@ -48,6 +48,7 @@ errors if needed.
 #Task Assignment
 
 ### **1. Traffic & Volume Patterns**
+>Lilly is going to be working on this question
 
 * **How does bidding volume change across hours of the day and days of the week?**
 * **When are the peak bidding periods, and what might explain those spikes?**
@@ -55,6 +56,7 @@ errors if needed.
 ---
 
 ### **2. Bid Behavior & Competitiveness**
+>[insert name here] is going to be working on this question
 
 * **How do bid amounts differ between winning and losing bids?**
 * **Is there a relationship between bid amount and the probability of winning an auction?**
@@ -63,6 +65,7 @@ errors if needed.
 ---
 
 ### **3. Auction Outcomes**
+>[insert name here] is going to be working on this question
 
 * **Which features (e.g., bid amount, time of day, advertiser) are most predictive of a win?**
 * **How does the clearing price compare to the submitted bid amount across auctions?**
@@ -71,6 +74,7 @@ errors if needed.
 ---
 
 ### **4. Data Quality–Driven Questions**
+>[insert name here] is going to be working on this question
 
 * **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
 * **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
@@ -104,7 +108,6 @@ library(stringr)  # for string cleaning
 #Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
 
 ```
-
 
 *Note: please try to use tidyverse packages and functions, we want to make sure everyone is familiar
 with the functions we are using.
