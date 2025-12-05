@@ -37,6 +37,8 @@ By the end of this process we will have as a team:
     
 4. A coherent final presentation (in a separate powerpoint created by Lilly), along with a clear 
    assignment of who is presenting what.
+   
+LINK TO SLIDES: https://docs.google.com/presentation/d/1Z7EedURd1mhE6WoUVpifnr4v6w-2GmTj2a6IKPiLOHg/edit?usp=sharing
     
 *General notes: 
 >Some example code for cleaning and data analysis will be pulled into the presentation,
