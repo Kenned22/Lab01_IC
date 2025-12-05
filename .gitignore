@@ -5,12 +5,11 @@
 data/
 .vscode/
 .DS_Store
-<<<<<<< HEAD
+
+# Ignore cleaned confidential data
+/data/bids_clean.rds
+/data/bids_clean.parquet
+
 .lintr
 Lab_Coding.html
 logs/
-=======
-Lab_Coding.html
-.lintr
-logs/
->>>>>>> main
