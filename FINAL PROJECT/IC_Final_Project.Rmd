@@ -170,8 +170,8 @@ ggplot(hourly_volume, aes(x = hour, y = n, fill = as.factor(hour))) +
   scale_fill_viridis_d(option = "cividis") +
   labs(
     title = "Bidding Volume by Hour of Day",
-    x = "Hour of Day",
-    y = "Number of Bids"
+    x = "",
+    y = "# of Bids"
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -183,8 +183,8 @@ ggplot(daily_volume, aes(x = day_of_week, y = n, fill = day_of_week)) +
   scale_fill_viridis_d(option = "cividis") +
   labs(
     title = "Bidding Volume by Day of Week",
-    x = "Day of Week",
-    y = "Number of Bids"
+    x = "",
+    y = "# of Bids"
   ) +
   theme_minimal()
 
