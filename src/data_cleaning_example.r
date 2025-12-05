@@ -111,8 +111,23 @@ bids %>%
 
 options(tigris_use_cache = TRUE)
 
-# Download U.S. ZCTA polygons (2020), pulling Oregon only
-zips <- zctas(year = 2020)
+# Load Oregon-only ZCTA polygons (much faster for spatial join)
+zips_oregon_path <- here("data", "zips_zcta_oregon.parquet")
+
+if (file.exists(zips_oregon_path)) {
+  cat("Loading Oregon ZCTA data from cached parquet...\n")
+  zips <- sfarrow::st_read_parquet(zips_oregon_path)
+} else {
+  cat("Oregon cache not found. Loading full US ZCTAs and filtering...\n")
+  # Download full US (state param doesn't work for 2020)
+  zips_full <- zctas(year = 2020)
+  # Filter to Oregon only (ZIPs starting with 97)
+  zips <- zips_full %>% filter(str_starts(ZCTA5CE20, "97"))
+  cat(glue("Filtered to {nrow(zips)} Oregon ZCTAs (from {nrow(zips_full)} US total)\n"))
+  # Cache Oregon-only for future runs
+  cat("Caching Oregon ZCTA data to parquet...\n")
+  sfarrow::st_write_parquet(zips, zips_oregon_path)
+}
 
 # Convert bids → sf object using lat/long
 df_sf <- st_as_sf(
@@ -314,4 +329,6 @@ browseURL("profile.html")
 #   # End of main execution block
 # }  # End if (sys.nframe() == 0)
 #
+
+
 
