@@ -1237,6 +1237,30 @@ glimpse(bids)
 
 The latitude and longitude values were cleaned using simple geographic rules based on Oregon’s expected coordinate range. Latitudes between 42 and 46.5 degrees and longitudes between –125 and –116 were considered plausible and retained. Values outside these bounds were treated as implausible for Oregon-only data and set to NA in the cleaned variables. This approach ensures that realistic Oregon locations are preserved while clearly incorrect coordinates are flagged.
 
+## Clear BID_WON (Option)
+```{r}
+# Check current values first
+cat("Current values in BID_WON:\n")
+print(table(bids$BID_WON, useNA = "always"))
+
+# Fix the "true" values to "TRUE"
+bids <- bids %>%
+  mutate(
+    BID_WON_clean = case_when(
+      tolower(BID_WON) == "true" ~ "TRUE",
+      tolower(BID_WON) == "false" ~ "FALSE",
+      BID_WON == "TRUE" ~ "TRUE",
+      BID_WON == "FALSE" ~ "FALSE",
+      TRUE ~ NA_character_  # Set anything else to NA
+    )
+  )
+
+
+cat("\nCleaned BID_WON_clean:\n")
+print(table(bids$BID_WON_clean, useNA = "always"))
+```
+
+
 # Creating a Final Cleaned Dataset (10–15 minutes)
 
 Now pull everything together.
@@ -1268,7 +1292,7 @@ bids_clean <- bids_nodup %>%
     TIMESTAMP_clean,
     DEVICE_GEO_LAT_clean,
     DEVICE_GEO_LONG_clean,
-    BID_WON,
+    BID_WON_clean,
     DEVICE_TYPE,
     SIZE
   )
