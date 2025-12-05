@@ -130,7 +130,7 @@ bids_clean <- readRDS(here::here("data", "bids_clean.rds"))
 
 ### **1. Traffic & Volume Patterns**
 
-* **How does bidding volume change across hours of the day and days of the week?**
+***How does bidding volume change across hours of the day and days of the week?**
 
 ```{r}
 # Extract hour and day of week
@@ -194,13 +194,27 @@ Comments: At first I thought there was something wrong since we are only seeing 
 
 Note: For the plots I intentionally added a minimal theme and made sure that the color schemes added were color-blind friendly and accessible. Specifically "cividis" is most optimized for all types of vision, including grayscale.
 
-* **When are the peak bidding periods, and what might explain those spikes?**
+***When are the peak bidding periods, and what might explain those spikes?**
 
 ```{r}
 
+# Identify top 3 bidding hours
+top_hours <- hourly_volume %>%
+  top_n(3, n) %>%
+  arrange(desc(n))
+
+# Identify peak day(s)
+top_days <- daily_volume %>%
+  top_n(1, n)
+
+print(top_hours)
+print(top_days)
+
 ```
 
+The top three peak bidding hours are 2am, 3am, and 1am with 67,111 bids, 61,514 bids, and 60,233 bids respectively. These early hour spikes suggest that the bidding system might be automated or operating across multiple timezones (if bidders are from outside of the PST), but that is not the case here as all the bids come from OR. Another explanation could be backlogged jobs. Since it is very unlikely that these bids come from humans at these early/late hours it points to scheduled systems or ad bots.
 
+Wednesday had the highest volume with 273,779 bids, but again we only have data from two days of the week so that does not mean much here.
 
 ### **2. Bid Behavior & Competitiveness**
 
