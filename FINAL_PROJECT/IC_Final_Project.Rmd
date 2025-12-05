@@ -1,0 +1,612 @@
+---
+title: "Ethics and Practice in Data Science Final Project"
+author: "International Commuters"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+#Overview & Goals
+
+This markdown file will be the place where we can conduct our exploratory data analysis.
+
+Below you will find the questions that we are using to explore the data and who is 
+responsible for conducting the data analysis associated with that question.
+
+By the end of this process we will have as a team:
+
+1. Imported the cleaned dataset from Lab 3
+
+2. All of the EDA questions examined with clear code & written explanations of the results.
+
+3. Data visualization for the various EDAs.
+    - One question to resolve is - is Lilly creating all the viz or should this be the responsibility 
+      the people assigned the questions.
+    - Either way we need one coherent theme across all viz to be imported into the presentation
+    
+4. A coherent final presentation (in a separate powerpoint created by Lilly), along with a clear 
+   assignment of who is presenting what.
+   
+LINK TO SLIDES: https://docs.google.com/presentation/d/1Z7EedURd1mhE6WoUVpifnr4v6w-2GmTj2a6IKPiLOHg/edit?usp=sharing
+    
+*General notes: 
+>Some example code for cleaning and data analysis will be pulled into the presentation,
+so make sure you are annotating code as you go so we can explain what each line does if needed.
+
+>keep committing your progress with clear messages so we can see contributions and troubleshoot
+errors if needed.
+
+#Task Assignment
+
+### **1. Traffic & Volume Patterns**
+>Lilly is going to be working on this question
+
+* **How does bidding volume change across hours of the day and days of the week?**
+* **When are the peak bidding periods, and what might explain those spikes?**
+
+---
+
+### **2. Bid Behavior & Competitiveness**
+>Edwin is going to be working on this question
+
+* **How do bid amounts differ between winning and losing bids?**
+* **Is there a relationship between bid amount and the probability of winning an auction?**
+* **Do certain advertisers consistently place higher or lower bids compared to others?**
+
+---
+
+### **3. Auction Outcomes**
+>Bingtang is going to be working on this question
+
+* **Which features (e.g., bid amount, time of day, advertiser) are most predictive of a win?**
+* **How does the clearing price compare to the submitted bid amount across auctions?**
+* **Are there systematic differences in outcomes across devices, regions, or ad categories?**
+
+---
+
+### **4. Data Quality–Driven Questions**
+>Neal is going to be working on this question
+
+* **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
+* **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
+
+---
+
+#Setup
+
+##Packages
+```{r loadpackages}
+
+library(tidyverse)
+library(arrow)
+library(logger)
+library(glue)
+library(dplyr)
+library(tidyr)
+library(rlang)
+library(lubridate)
+library(tictoc)
+library(here)
+library(jsonlite)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(tigris)   # for zctas()
+library(sf)       # for spatial functions
+library(stringr)  # for string cleaning
+# source(here("src", "data_cleaning.r"))
+
+#Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
+
+```
+
+*Note: please try to use tidyverse packages and functions, we want to make sure everyone is familiar
+with the functions we are using.
+
+#Import the cleaned dataset
+
+```{r}
+#READ THIS BEFORE RUNNING CODE
+#Since we cannot "save" the cleaned data in lab 03 please make sure to run this code "saveRDS(bids_clean, here::here("data", "bids_clean.rds"))" at line 1318 and make sure to NOT commit that change, then you can run this code
+
+
+bids_clean <- readRDS(here::here("data", "bids_clean.rds"))
+
+
+```
+
+
+#Run Exploratory Data Analysis 
+
+### **1. Traffic & Volume Patterns**
+
+***How does bidding volume change across hours of the day and days of the week?**
+
+```{r}
+# Extract hour and day of week
+bids_clean <- bids_clean %>%
+  mutate(
+    hour = hour(TIMESTAMP_clean),
+    day_of_week = wday(TIMESTAMP_clean, label = TRUE, abbr = FALSE, week_start = 1),
+ 
+    day_of_week = factor(day_of_week,
+                         levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                         ordered = FALSE)
+  )
+
+# Summarize bid volume by hour
+hourly_volume <- bids_clean %>%
+  count(hour)
+
+
+all_days <- factor(
+  c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+  ordered = FALSE
+)
+
+# Summarize bid volume by day of week (include 0s)
+daily_volume <- bids_clean %>%
+  count(day_of_week) %>%
+  complete(day_of_week = all_days, fill = list(n = 0))
+
+# Plot: Bidding volume by hour
+ggplot(hourly_volume, aes(x = hour, y = n, fill = as.factor(hour))) +
+  geom_col(show.legend = FALSE) +  
+  scale_x_continuous(
+    breaks = 0:23,
+    labels = format(strptime(0:23, format = "%H"), format = "%I %p")
+  ) +
+  scale_fill_viridis_d(option = "cividis") +
+  labs(
+    title = "Bidding Volume by Hour of Day",
+    x = "",
+    y = "# of Bids"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Plot: Bidding volume by day of week
+ggplot(daily_volume, aes(x = day_of_week, y = n, fill = day_of_week)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_fill_viridis_d(option = "cividis") +
+  labs(
+    title = "Bidding Volume by Day of Week",
+    x = "",
+    y = "# of Bids"
+  ) +
+  theme_minimal()
+
+
+```
+
+Comments: At first I thought there was something wrong since we are only seeing results from a Tuesday and Wednesday, but after investigation, the original data set given to use only has data from 10/21/2025 and 10/22/2025, so this makes sense. This will limit the conclusions we can draw from the data, but it is not error.
+
+Note: For the plots I intentionally added a minimal theme and made sure that the color schemes added were color-blind friendly and accessible. Specifically "cividis" is most optimized for all types of vision, including grayscale.
+
+***When are the peak bidding periods, and what might explain those spikes?**
+
+```{r}
+
+# Identify top 3 bidding hours
+top_hours <- hourly_volume %>%
+  top_n(3, n) %>%
+  arrange(desc(n))
+
+# Identify peak day(s)
+top_days <- daily_volume %>%
+  top_n(1, n)
+
+print(top_hours)
+print(top_days)
+
+```
+
+The top three peak bidding hours are 2am, 3am, and 1am with 67,111 bids, 61,514 bids, and 60,233 bids respectively. These early hour spikes suggest that the bidding system might be automated or operating across multiple timezones (if bidders are from outside of the PST), but that is not the case here as all the bids come from OR. Another explanation could be backlogged jobs. Since it is very unlikely that these bids come from humans at these early/late hours it points to scheduled systems or ad bots.
+
+Wednesday had the highest volume with 273,779 bids, but again we only have data from two days of the week so that does not mean much here.
+
+### **2. Bid Behavior & Competitiveness**
+
+
+
+### **3. Auction Outcomes**
+```{r}
+library(tidyverse)
+library(lubridate)
+library(skimr)
+library(corrplot)
+library(ggplot2)
+library(scales)
+
+# Convert necessary columns to appropriate types
+bids_clean <- bids_clean %>%
+  mutate(
+    BID_WON_clean = as.logical(BID_WON_clean),
+    TIMESTAMP_clean = as.POSIXct(TIMESTAMP_clean),
+    DEVICE_TYPE = as.factor(DEVICE_TYPE),
+    SIZE = as.factor(SIZE)
+  )
+
+# Extract time features for analysis
+bids_clean <- bids_clean %>%
+  mutate(
+    hour_of_day = hour(TIMESTAMP_clean),
+    day_of_week = wday(TIMESTAMP_clean, label = TRUE),
+    is_weekend = ifelse(day_of_week %in% c("Sat", "Sun"), TRUE, FALSE)
+  )
+```
+
+#1. Which features are most predictive of a win?
+```{r}
+# 1.1 Summary statistics for wins vs losses
+win_summary <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(BID_WON_clean) %>%
+  summarise(
+    count = n(),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    median_response_time = median(RESPONSE_TIME_clean, na.rm = TRUE)
+  )
+
+print(win_summary)
+```
+```{r}
+# 1.2 Distribution of winning bids vs losing bids
+ggplot(bids_clean %>% filter(!is.na(PRICE_final)), 
+       aes(x = PRICE_final, fill = BID_WON_clean)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10(labels = scales::dollar) +
+  labs(title = "Distribution of Bid Prices by Win Status",
+       x = "Bid Price (log scale)",
+       y = "Density") +
+  theme_minimal()
+```
+```{r}
+# 1.3 Response time analysis by win status
+ggplot(bids_clean, aes(x = RESPONSE_TIME_clean, fill = BID_WON_clean)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Response Times by Win Status",
+       x = "Response Time",
+       y = "Density") +
+  theme_minimal()
+```
+```{r}
+# 1.4 Time of day patterns
+time_patterns <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(hour_of_day, BID_WON_clean) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+ggplot(time_patterns, aes(x = hour_of_day, y = win_rate, group = 1)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  labs(title = "Win Rate by Hour of Day",
+       x = "Hour of Day",
+       y = "Win Rate") +
+  theme_minimal()
+```
+```{r}
+# 1.5 Device type analysis
+device_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(DEVICE_TYPE) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+print(device_analysis)
+```
+```{r}
+# 1.6 Ad size analysis
+size_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(SIZE) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+print(size_analysis)
+```
+
+#2. How does the clearing price compare to the submitted bid amount?
+```{r}
+# 2.1 Create analysis for auctions with winning bids
+auction_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(AUCTION_ID) %>%
+  filter(any(BID_WON_clean == TRUE)) %>%
+  mutate(
+    winning_price = ifelse(BID_WON_clean == TRUE, PRICE_final, NA),
+    second_price = ifelse(!BID_WON_clean, PRICE_final, NA)
+  ) %>%
+  summarise(
+    total_bids = n(),
+    winning_bid = max(winning_price, na.rm = TRUE),
+    max_losing_bid = max(second_price, na.rm = TRUE),
+    price_diff = winning_bid - max_losing_bid,
+    .groups = "drop"
+  )
+
+# Summary of price differences
+summary(auction_analysis$price_diff)
+```
+```{r}
+# 2.2 Distribution of winning bid vs highest losing bid
+ggplot(auction_analysis %>% filter(is.finite(price_diff)), 
+       aes(x = price_diff)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(title = "Distribution of Difference Between Winning and Highest Losing Bid",
+       x = "Price Difference",
+       y = "Count") +
+  theme_minimal()
+```
+```{r}
+# 2.3 Ratio analysis
+auction_analysis <- auction_analysis %>%
+  filter(is.finite(price_diff) & max_losing_bid > 0) %>%
+  mutate(price_ratio = winning_bid / max_losing_bid)
+
+summary(auction_analysis$price_ratio)
+```
+```{r}
+# 2.4 Scatter plot of winning vs losing bids
+ggplot(auction_analysis %>% filter(is.finite(winning_bid) & is.finite(max_losing_bid)), 
+       aes(x = max_losing_bid, y = winning_bid)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  scale_x_continuous(labels = scales::dollar) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(title = "Winning Bid vs Highest Losing Bid",
+       x = "Highest Losing Bid",
+       y = "Winning Bid") +
+  theme_minimal()
+```
+
+#3. Systematic differences across devices, regions, or ad categories
+```{r}
+# 3.1 Device type analysis
+ggplot(device_analysis, aes(x = reorder(DEVICE_TYPE, -win_rate), y = win_rate)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+  labs(title = "Win Rate by Device Type",
+       x = "Device Type",
+       y = "Win Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+# 3.2 Regional analysis
+region_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(DEVICE_GEO_REGION_clean) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    avg_response_time = mean(RESPONSE_TIME_clean),
+    .groups = "drop"
+  ) %>%
+  filter(count > 100) %>%  # Filter for regions with sufficient data
+  arrange(desc(win_rate))
+
+print(region_analysis)
+```
+```{r}
+# 3.3 Ad size (SIZE) analysis
+ggplot(size_analysis, aes(x = reorder(SIZE, -win_rate), y = win_rate)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+  labs(title = "Win Rate by Ad Size",
+       x = "Ad Size",
+       y = "Win Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+# 3.4 Publisher analysis (top publishers)
+publisher_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(PUBLISHER_ID) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  ) %>%
+  filter(count > 100) %>%
+  arrange(desc(win_rate))
+
+head(publisher_analysis, 10)
+```
+```{r}
+# 3.5 Correlation analysis for numerical variables
+numerical_vars <- bids_clean %>%
+  select(PRICE_final, RESPONSE_TIME_clean, DEVICE_GEO_LAT_clean, DEVICE_GEO_LONG_clean) %>%
+  filter(complete.cases(.))
+
+cor_matrix <- cor(numerical_vars)
+print(cor_matrix)
+
+# Visualize correlation matrix
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45)
+```
+```{r}
+# 3.6 ANOVA tests for categorical variables
+# Test if win rates differ by device type
+anova_device <- aov(PRICE_final ~ DEVICE_TYPE, 
+                    data = bids_clean %>% filter(!is.na(PRICE_final)))
+summary(anova_device)
+
+# Test if win rates differ by ad size
+anova_size <- aov(PRICE_final ~ SIZE, 
+                  data = bids_clean %>% filter(!is.na(PRICE_final)))
+summary(anova_size)
+```
+```{r}
+# 3.7 Missing values analysis for PRICE_final
+missing_analysis <- bids_clean %>%
+  mutate(has_price = !is.na(PRICE_final)) %>%
+  group_by(has_price) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_response_time = mean(RESPONSE_TIME_clean),
+    device_type_mode = names(sort(table(DEVICE_TYPE), decreasing = TRUE))[1],
+    .groups = "drop"
+  )
+
+print(missing_analysis)
+```
+```{r}
+# Create a summary report
+cat("=== EXPLORATORY DATA ANALYSIS SUMMARY ===\n\n")
+
+cat("1. PREDICTIVE FEATURES OF WINNING BIDS:\n")
+cat("   - Higher bid prices are strongly associated with winning\n")
+cat("   - Response time patterns show...\n")
+cat("   - Time of day effects: Peak win rates occur at...\n")
+cat("   - Device type", levels(bids_clean$DEVICE_TYPE)[which.max(device_analysis$win_rate)], 
+    "has the highest win rate\n")
+cat("   - Ad size", as.character(size_analysis$SIZE[which.max(size_analysis$win_rate)]), 
+    "has the highest win rate\n\n")
+
+cat("2. CLEARING PRICE ANALYSIS:\n")
+cat("   - Average difference between winning and highest losing bid: $", 
+    round(mean(auction_analysis$price_diff, na.rm = TRUE), 4), "\n")
+cat("   - Median price ratio (winning/highest losing):", 
+    round(median(auction_analysis$price_ratio, na.rm = TRUE), 2), "\n")
+cat("   - In", round(mean(auction_analysis$price_diff > 0, na.rm = TRUE) * 100, 1), 
+    "% of auctions, winning bid > highest losing bid\n\n")
+
+cat("3. SYSTEMATIC DIFFERENCES:\n")
+cat("   - Device type differences:", paste(levels(bids_clean$DEVICE_TYPE), collapse = ", "), "\n")
+cat("   - Regional variations: Top 3 regions by win rate:", 
+    paste(head(region_analysis$DEVICE_GEO_REGION_clean, 3), collapse = ", "), "\n")
+cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)), 
+    "(", round(mean(is.na(bids_clean$PRICE_final)) * 100, 1), "% of data)\n")
+```
+
+
+
+
+
+
+### **4. Data Quality–Driven Questions**
+
+
+#Data Visualization
+
+#Synthesis
+
+*Notes: Things to make clear in the sythesis portion of this all for our own use:
+
+  >What were points of uncertainity? What steps did we take to address them and how could they still be showing     up?
+  >How did we clean and prepare the data set for our work? What choices did we make and how did we standardize?
+  
+#Presentation Assignment:
+
+##We will decide who is generating what info and transferring it to the slides.
+##We also need to decide who will present what and how to field questions.
+
+Final presentation ask:
+Your final presentation, in **20–30 minutes**, should tell a clear, professional story of your team’s
+data-cleaning workflow, exploratory analysis, and collaboration practices. The goal is to
+demonstrate not only what you found, but how you worked as a data science team.
+
+Things we need to include in the final presentation:
+
+Key Issues You Found
+Examples include:
+• Missingness patterns
+• Formatting inconsistencies (dates, numeric/character mismatches, categorical typos)
+• Duplicates
+• Outliers or implausible values
+• Structural issues (names, types, consistency)
+
+Your Cleaning Strategy
+For each issue:
+• What you observed
+• Why it was a problem
+• Principle behind your fix (e.g., “We chose this imputation strategy because…”)
+• Concise R code or pseudo-code
+Focus on justifying decisions, not on full code dumps.
+
+Reproducibility and Workflow
+Highlight:
+• Git usage (branches, PRs, merge conflicts)
+• Script modularity and readability
+• R Markdown / Quarto documentation
+• Naming conventions and folder structure
+
+EDA
+Overview Patterns
+Show:
+• Distributions
+• Key relationships
+• Missingness profiles
+• Surprising patterns
+
+Deep Dives on Guiding Questions
+For each:
+• State the question
+• Show relevant figures
+• Interpret results clearly
+• Connect to cleaning decisions
+
+Visualization Quality
+Ensure:
+• Clear labels/titles
+• Good color choices
+• No clutter
+• Interpretation accompanies each visual
+
+Insights
+Summarize:
+• 3–5 most important findings
+• What the data suggests overall
+• Uncertainties or next steps
+
+Collaboration Reflection
+Discuss:
+• What went well in your workflow
+• What was challenging
+• Lessons learned for future projects
+• How GitHub, Jira, and RStudio supported collaboration
+
+GitHub Repository Checklist
+Confirm your repo includes:
+• Clean README
+• Data cleaning scripts
+• EDA scripts (.qmd or .Rmd)
+• Clear folder structure (data/, R/, figs/)
+• Kanban snapshot
+• Evidence of teamwork (commit history, pull requests, etc.)
+
+  
