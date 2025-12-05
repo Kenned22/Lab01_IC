@@ -97,6 +97,7 @@ library(lubridate)
 library(tictoc)
 library(here)
 library(jsonlite)
+library(scales)
 library(knitr)
 library(kableExtra)
 library(DT)
@@ -115,6 +116,12 @@ with the functions we are using.
 #Import the cleaned dataset
 
 ```{r}
+#READ THIS BEFORE RUNNING CODE
+#Since we cannot "save" the cleaned data in lab 03 please make sure to run this code "saveRDS(bids_clean, here::here("data", "bids_clean.rds"))" at line 1318 and make sure to NOT commit that change, then you can run this code
+
+
+bids_clean <- readRDS(here::here("data", "bids_clean.rds"))
+
 
 ```
 
@@ -122,6 +129,76 @@ with the functions we are using.
 #Run Exploratory Data Analysis 
 
 ### **1. Traffic & Volume Patterns**
+
+* **How does bidding volume change across hours of the day and days of the week?**
+
+```{r}
+# Extract hour and day of week
+bids_clean <- bids_clean %>%
+  mutate(
+    hour = hour(TIMESTAMP_clean),
+    day_of_week = wday(TIMESTAMP_clean, label = TRUE, abbr = FALSE, week_start = 1),
+ 
+    day_of_week = factor(day_of_week,
+                         levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                         ordered = FALSE)
+  )
+
+# Summarize bid volume by hour
+hourly_volume <- bids_clean %>%
+  count(hour)
+
+
+all_days <- factor(
+  c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+  ordered = FALSE
+)
+
+# Summarize bid volume by day of week (include 0s)
+daily_volume <- bids_clean %>%
+  count(day_of_week) %>%
+  complete(day_of_week = all_days, fill = list(n = 0))
+
+# Plot: Bidding volume by hour
+ggplot(hourly_volume, aes(x = hour, y = n, fill = as.factor(hour))) +
+  geom_col(show.legend = FALSE) +  
+  scale_x_continuous(
+    breaks = 0:23,
+    labels = format(strptime(0:23, format = "%H"), format = "%I %p")
+  ) +
+  scale_fill_viridis_d(option = "cividis") +
+  labs(
+    title = "Bidding Volume by Hour of Day",
+    x = "Hour of Day",
+    y = "Number of Bids"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Plot: Bidding volume by day of week
+ggplot(daily_volume, aes(x = day_of_week, y = n, fill = day_of_week)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_fill_viridis_d(option = "cividis") +
+  labs(
+    title = "Bidding Volume by Day of Week",
+    x = "Day of Week",
+    y = "Number of Bids"
+  ) +
+  theme_minimal()
+
+
+```
+Comments: At first I thought there was something wrong since we are only seeing results from a Tuesday and Wednesday, but after investigation, the original data set given to use only has data from 10/21/2025 and 10/22/2025, so this makes sense. This will limit the conclusions we can draw from the data, but it is not error.
+
+Note: For the plots I intentionally added a minimal theme and made sure that the color schemes added were color-blind friendly and accessible. Specifically "cividis" is most optimized for all types of vision, including grayscale.
+
+* **When are the peak bidding periods, and what might explain those spikes?**
+
+```{r}
+
+```
 
 
 
