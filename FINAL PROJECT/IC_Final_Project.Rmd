@@ -224,6 +224,297 @@ Wednesday had the highest volume with 273,779 bids, but again we only have data 
 
 
 ### **3. Auction Outcomes**
+```{r}
+library(tidyverse)
+library(lubridate)
+library(skimr)
+library(corrplot)
+library(ggplot2)
+library(scales)
+
+# Convert necessary columns to appropriate types
+bids_clean <- bids_clean %>%
+  mutate(
+    BID_WON_clean = as.logical(BID_WON_clean),
+    TIMESTAMP_clean = as.POSIXct(TIMESTAMP_clean),
+    DEVICE_TYPE = as.factor(DEVICE_TYPE),
+    SIZE = as.factor(SIZE)
+  )
+
+# Extract time features for analysis
+bids_clean <- bids_clean %>%
+  mutate(
+    hour_of_day = hour(TIMESTAMP_clean),
+    day_of_week = wday(TIMESTAMP_clean, label = TRUE),
+    is_weekend = ifelse(day_of_week %in% c("Sat", "Sun"), TRUE, FALSE)
+  )
+```
+
+#1. Which features are most predictive of a win?
+```{r}
+# 1.1 Summary statistics for wins vs losses
+win_summary <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(BID_WON_clean) %>%
+  summarise(
+    count = n(),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    median_response_time = median(RESPONSE_TIME_clean, na.rm = TRUE)
+  )
+
+print(win_summary)
+```
+```{r}
+# 1.2 Distribution of winning bids vs losing bids
+ggplot(bids_clean %>% filter(!is.na(PRICE_final)), 
+       aes(x = PRICE_final, fill = BID_WON_clean)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10(labels = scales::dollar) +
+  labs(title = "Distribution of Bid Prices by Win Status",
+       x = "Bid Price (log scale)",
+       y = "Density") +
+  theme_minimal()
+```
+```{r}
+# 1.3 Response time analysis by win status
+ggplot(bids_clean, aes(x = RESPONSE_TIME_clean, fill = BID_WON_clean)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Response Times by Win Status",
+       x = "Response Time",
+       y = "Density") +
+  theme_minimal()
+```
+```{r}
+# 1.4 Time of day patterns
+time_patterns <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(hour_of_day, BID_WON_clean) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+ggplot(time_patterns, aes(x = hour_of_day, y = win_rate, group = 1)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue", size = 2) +
+  labs(title = "Win Rate by Hour of Day",
+       x = "Hour of Day",
+       y = "Win Rate") +
+  theme_minimal()
+```
+```{r}
+# 1.5 Device type analysis
+device_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(DEVICE_TYPE) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+print(device_analysis)
+```
+```{r}
+# 1.6 Ad size analysis
+size_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(SIZE) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  )
+
+print(size_analysis)
+```
+
+#2. How does the clearing price compare to the submitted bid amount?
+```{r}
+# 2.1 Create analysis for auctions with winning bids
+auction_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(AUCTION_ID) %>%
+  filter(any(BID_WON_clean == TRUE)) %>%
+  mutate(
+    winning_price = ifelse(BID_WON_clean == TRUE, PRICE_final, NA),
+    second_price = ifelse(!BID_WON_clean, PRICE_final, NA)
+  ) %>%
+  summarise(
+    total_bids = n(),
+    winning_bid = max(winning_price, na.rm = TRUE),
+    max_losing_bid = max(second_price, na.rm = TRUE),
+    price_diff = winning_bid - max_losing_bid,
+    .groups = "drop"
+  )
+
+# Summary of price differences
+summary(auction_analysis$price_diff)
+```
+```{r}
+# 2.2 Distribution of winning bid vs highest losing bid
+ggplot(auction_analysis %>% filter(is.finite(price_diff)), 
+       aes(x = price_diff)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(title = "Distribution of Difference Between Winning and Highest Losing Bid",
+       x = "Price Difference",
+       y = "Count") +
+  theme_minimal()
+```
+```{r}
+# 2.3 Ratio analysis
+auction_analysis <- auction_analysis %>%
+  filter(is.finite(price_diff) & max_losing_bid > 0) %>%
+  mutate(price_ratio = winning_bid / max_losing_bid)
+
+summary(auction_analysis$price_ratio)
+```
+```{r}
+# 2.4 Scatter plot of winning vs losing bids
+ggplot(auction_analysis %>% filter(is.finite(winning_bid) & is.finite(max_losing_bid)), 
+       aes(x = max_losing_bid, y = winning_bid)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  scale_x_continuous(labels = scales::dollar) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(title = "Winning Bid vs Highest Losing Bid",
+       x = "Highest Losing Bid",
+       y = "Winning Bid") +
+  theme_minimal()
+```
+
+#3. Systematic differences across devices, regions, or ad categories
+```{r}
+# 3.1 Device type analysis
+ggplot(device_analysis, aes(x = reorder(DEVICE_TYPE, -win_rate), y = win_rate)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+  labs(title = "Win Rate by Device Type",
+       x = "Device Type",
+       y = "Win Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+# 3.2 Regional analysis
+region_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(DEVICE_GEO_REGION_clean) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    avg_response_time = mean(RESPONSE_TIME_clean),
+    .groups = "drop"
+  ) %>%
+  filter(count > 100) %>%  # Filter for regions with sufficient data
+  arrange(desc(win_rate))
+
+print(region_analysis)
+```
+```{r}
+# 3.3 Ad size (SIZE) analysis
+ggplot(size_analysis, aes(x = reorder(SIZE, -win_rate), y = win_rate)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+  labs(title = "Win Rate by Ad Size",
+       x = "Ad Size",
+       y = "Win Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+# 3.4 Publisher analysis (top publishers)
+publisher_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  group_by(PUBLISHER_ID) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_bid_price = mean(PRICE_final),
+    .groups = "drop"
+  ) %>%
+  filter(count > 100) %>%
+  arrange(desc(win_rate))
+
+head(publisher_analysis, 10)
+```
+```{r}
+# 3.5 Correlation analysis for numerical variables
+numerical_vars <- bids_clean %>%
+  select(PRICE_final, RESPONSE_TIME_clean, DEVICE_GEO_LAT_clean, DEVICE_GEO_LONG_clean) %>%
+  filter(complete.cases(.))
+
+cor_matrix <- cor(numerical_vars)
+print(cor_matrix)
+
+# Visualize correlation matrix
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45)
+```
+```{r}
+# 3.6 ANOVA tests for categorical variables
+# Test if win rates differ by device type
+anova_device <- aov(PRICE_final ~ DEVICE_TYPE, 
+                    data = bids_clean %>% filter(!is.na(PRICE_final)))
+summary(anova_device)
+
+# Test if win rates differ by ad size
+anova_size <- aov(PRICE_final ~ SIZE, 
+                  data = bids_clean %>% filter(!is.na(PRICE_final)))
+summary(anova_size)
+```
+```{r}
+# 3.7 Missing values analysis for PRICE_final
+missing_analysis <- bids_clean %>%
+  mutate(has_price = !is.na(PRICE_final)) %>%
+  group_by(has_price) %>%
+  summarise(
+    count = n(),
+    win_rate = mean(BID_WON_clean),
+    avg_response_time = mean(RESPONSE_TIME_clean),
+    device_type_mode = names(sort(table(DEVICE_TYPE), decreasing = TRUE))[1],
+    .groups = "drop"
+  )
+
+print(missing_analysis)
+```
+```{r}
+# Create a summary report
+cat("=== EXPLORATORY DATA ANALYSIS SUMMARY ===\n\n")
+
+cat("1. PREDICTIVE FEATURES OF WINNING BIDS:\n")
+cat("   - Higher bid prices are strongly associated with winning\n")
+cat("   - Response time patterns show...\n")
+cat("   - Time of day effects: Peak win rates occur at...\n")
+cat("   - Device type", levels(bids_clean$DEVICE_TYPE)[which.max(device_analysis$win_rate)], 
+    "has the highest win rate\n")
+cat("   - Ad size", as.character(size_analysis$SIZE[which.max(size_analysis$win_rate)]), 
+    "has the highest win rate\n\n")
+
+cat("2. CLEARING PRICE ANALYSIS:\n")
+cat("   - Average difference between winning and highest losing bid: $", 
+    round(mean(auction_analysis$price_diff, na.rm = TRUE), 4), "\n")
+cat("   - Median price ratio (winning/highest losing):", 
+    round(median(auction_analysis$price_ratio, na.rm = TRUE), 2), "\n")
+cat("   - In", round(mean(auction_analysis$price_diff > 0, na.rm = TRUE) * 100, 1), 
+    "% of auctions, winning bid > highest losing bid\n\n")
+
+cat("3. SYSTEMATIC DIFFERENCES:\n")
+cat("   - Device type differences:", paste(levels(bids_clean$DEVICE_TYPE), collapse = ", "), "\n")
+cat("   - Regional variations: Top 3 regions by win rate:", 
+    paste(head(region_analysis$DEVICE_GEO_REGION_clean, 3), collapse = ", "), "\n")
+cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)), 
+    "(", round(mean(is.na(bids_clean$PRICE_final)) * 100, 1), "% of data)\n")
+```
+
+
+
 
 
 
