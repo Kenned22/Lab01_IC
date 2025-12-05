@@ -74,7 +74,7 @@ errors if needed.
 ---
 
 ### **4. Data Quality–Driven Questions**
->[insert name here] is going to be working on this question
+>Neal is going to be working on this question
 
 * **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
 * **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
