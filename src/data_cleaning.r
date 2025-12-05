@@ -35,10 +35,10 @@ check_columns <- function(df, expected_columns) {
     log_error(msg)
     stop(msg)
   }
-  
+
   expected_columns <- as.character(expected_columns)
   missing_columns <- setdiff(expected_columns, colnames(df))
-  
+
   if (length(missing_columns) == length(expected_columns)) {
     msg <- "All expected columns are missing from the dataframe"
     log_error(msg)
@@ -46,7 +46,7 @@ check_columns <- function(df, expected_columns) {
   } else if (length(missing_columns) > 0) {
     warning(glue("Missing columns:\n  {paste(missing_columns, collapse = '\n  ')}"))
   }
-  
+
   missing_columns
 }
 
@@ -65,17 +65,17 @@ check_column_types <- function(df, expected_types) {
   if (is.null(expected_types$column) || length(expected_types$column) == 0) {
     stop("expected_types must have a 'column' field with column names")
   }
-  
+
   if (!all(sapply(expected_types$Expected_Type, is.character))) {
     stop("All values in Expected_Type must be character strings")
   }
-  
+
   # Get actual types
   df_types <- sapply(df, function(col) class(col)[1])
-  
+
   # Find common columns
   common_cols <- intersect(names(df), expected_types$column)
-  
+
   # Create comparison
   type_comparison <- expected_types %>%
     filter(.data$column %in% common_cols) %>%
@@ -87,7 +87,7 @@ check_column_types <- function(df, expected_types) {
       match = .data$actual == .data$Expected_Type,
       .after = "Expected_Type"
     )
-  
+
   type_comparison
 }
 
@@ -168,7 +168,7 @@ check_blanks <- function(df) {
 #' find_duplicates <- function(df, exclude_cols = c("row_id")) {
 #'   check_cols <- setdiff(names(df), exclude_cols)
 #'   duplicate_indices <- which(duplicated(df[, check_cols]))
-#' 
+#'
 #'   list(
 #'     duplicate_indices = duplicate_indices,
 #'     num_duplicates = length(duplicate_indices)
@@ -258,11 +258,11 @@ get_type_func <- function(target_type) {
     Date = as.Date,
     POSIXct = function(x, ...) as.POSIXct(x, ...)
   )
-  
+
   if (!target_type %in% names(converters)) {
     stop(glue("Unknown type: {target_type}\nSupported: {paste(names(converters), collapse = ', ')}"))
   }
-  
+
   converters[[target_type]]
 }
 
@@ -279,11 +279,11 @@ get_check_func <- function(target_type) {
     Date = function(x) inherits(x, "Date"),
     POSIXct = function(x) inherits(x, "POSIXct")
   )
-  
+
   if (!target_type %in% names(checkers)) {
     stop(glue("Unknown type: {target_type}"))
   }
-  
+
   checkers[[target_type]]
 }
 
@@ -313,17 +313,17 @@ convert_column <- function(df, col_name, target_type,
                            output_col_name = NULL,
                            verbose = TRUE,
                            ...) {
-  
+
   if (verbose) {
     cat("\n", strrep("=", 60), "\n")
     cat(glue("Converting {col_name} to {target_type} \n"))
     cat(strrep("=", 60), "\n")
   }
-  
+
   # Get conversion and check functions
   converter <- get_type_func(target_type)
   checker <- get_check_func(target_type)
-  
+
   # Check if already correct type
   if (checker(df[[col_name]])) {
     if (verbose) {
@@ -331,23 +331,23 @@ convert_column <- function(df, col_name, target_type,
     }
     return(df)
   }
-  
+
   # Create new column name if not provided
   if (is.null(output_col_name)) {
     output_col_name <- paste0(col_name, "_clean")
   }
-  
+
   # Apply preprocessing if provided
   if (!is.null(preprocess_fn)) {
     if (verbose) cat("Applying preprocessing...\n")
     df[[output_col_name]] <- preprocess_fn(df[[col_name]])
   }
-  
+
   # Perform conversion with error handling
   tryCatch({
     if (verbose) cat(glue("Converting {col_name}...\n"))
     df[[output_col_name]] <- converter(df[[output_col_name]], ...)
-    
+
     if (verbose) {
       cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}\n\n"))
     }
@@ -355,14 +355,14 @@ convert_column <- function(df, col_name, target_type,
     log_error(glue("Failed to convert {output_col_name}: {e$message}"))
     stop(glue("Conversion failed for {output_col_name}: {e$message}"))
   })
-  
-  
+
+
   if (verbose) {
     num_NA = sum(is.na(df[[output_col_name]]))
-    cat(glue("NA COUNT: \n There are {num_NA} NAs in {output_col_name}.\n\n")) 
+    cat(glue("NA COUNT: \n There are {num_NA} NAs in {output_col_name}.\n\n"))
   }
-  
-  
+
+
   df
 }
 
@@ -389,7 +389,7 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
   } else {
     NULL
   }
-  
+
   convert_column(df,
                  col_name = col_name,
                  target_type = "numeric",
@@ -413,14 +413,14 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
 #'                                date_col = "DATE_UTC",
 #'                                timestamp_col = "TIMESTAMP",
 #'                                output_col = "TIMESTAMP") {
-#' 
+#'
 #'   # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
 #'   # but some dates are str "NA" and when dates are present, there are two different formats. Compared
 #'   # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
 #'   # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
 #'   # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
 #'   # column to TIMESTAMP_0.
-#' 
+#'
 #'   # TO DO: FORMAT AS A PREPROCESSING FUNCTION FOR THE CONVERT_COLUMN FUNCTION
 #'   # datetime_conversion_func <- function(df,
 #'   #                                      date_col = "DATE_UTC",
@@ -443,9 +443,9 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
 #'   #       "{output_col}" := paste(.data$TIMESTAMP_date_clean, .data$TIMESTAMP_time)
 #'   #     )
 #'   # }
-#' 
+#'
 #'   df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
-#' 
+#'
 #'   df <- df %>%
 #'     separate(
 #'       "TIMESTAMP_0",
@@ -462,9 +462,9 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
 #'     mutate(
 #'       "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
 #'     )
-#' 
-#' 
-#' 
+#'
+#'
+#'
 #'   convert_column(df, output_col, "POSIXct",
 #'                  format = format, tz = tz, verbose = verbose)
 #' }
