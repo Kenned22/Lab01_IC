@@ -190,6 +190,7 @@ ggplot(daily_volume, aes(x = day_of_week, y = n, fill = day_of_week)) +
 
 
 ```
+
 Comments: At first I thought there was something wrong since we are only seeing results from a Tuesday and Wednesday, but after investigation, the original data set given to use only has data from 10/21/2025 and 10/22/2025, so this makes sense. This will limit the conclusions we can draw from the data, but it is not error.
 
 Note: For the plots I intentionally added a minimal theme and made sure that the color schemes added were color-blind friendly and accessible. Specifically "cividis" is most optimized for all types of vision, including grayscale.
