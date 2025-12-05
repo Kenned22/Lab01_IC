@@ -13,3 +13,5 @@ data/
 .lintr
 Lab_Coding.html
 logs/
+FINAL_PROJECT/zips_zcta.parquet
+data/zips_zcta.parquet
