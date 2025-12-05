@@ -1338,7 +1338,7 @@ Use the template below and fill it in with your team’s work. **One row (PRICE)
 | TIMESTAMP | *Inconsistent/incomplete TIMESTAMP formats* | *Completeness + Consistency* | *Combined DATE and TIMESTAMP columns into a single POSIX datetime column* |
 | DEVICE_GEO_LAT(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Latitudes from 42 to 46.5, set outliers to NA.* |
 | DEVICE_GEO_LONG(optional) | *Implausible coordinate values outside Oregon's geographic range.* | *Validity* | *Filtered Longitudes from –125 to –116, set outliers to NA.* |
-
+| BID_WON(optional)) | *Inconsistent word of TRUE* | *Consistency* | *Standardized all "true""TRUE" to "TRUE"* |
 
 ## Reflection (5–8 sentences)
 
