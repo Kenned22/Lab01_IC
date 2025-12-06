@@ -1,4 +1,4 @@
-source("src/data_cleaning.r")
+source("src/data_cleaning.r")  # Functions loaded at runtime - linter warnings are false positives
 library(here)
 library(dplyr)
 library(tigris)   # for zctas()
@@ -6,6 +6,76 @@ library(sf)       # for spatial functions
 library(stringr)  # for string cleaning
 library(profvis)
 library(zipcodeR)
+library(arrow)
+
+data_cleaning_pipeline <- function(df, expected_columns, zip_code_db = NULL, save_path = NULL, verbose = TRUE) {
+  bids <- clean_price_column(bids,
+                             min_price = 0,
+                             max_price = 10,
+                             fix_leading_o = TRUE,
+                             verbose = verbose)
+
+  bids <- clean_geo_region_column(bids,
+                                  verbose = verbose)
+
+  bids <- clean_zip_column(bids,
+                           zip_code_db = zip_code_db,
+                           verbose = verbose)
+
+  bids <- clean_response_time_column(bids,
+                                     col_name = "RESPONSE_TIME",
+                                     output_col_name = "RESPONSE_TIME_clean",
+                                     extract_digits = TRUE,
+                                     verbose = verbose)
+
+  bids <- clean_timestamp_column(bids,
+                                 col_name = "TIMESTAMP",
+                                 verbose = verbose)
+
+  bids <- clean_city_column(bids,
+                            zip_code_db = zip_code_db,
+                            verbose = verbose)
+
+  bids <- clean_geo_coordinates_column(bids,
+                                       verbose = verbose)
+
+  bids <- clean_bids_won_column(bids,
+                                verbose = verbose)
+
+  bids <- clean_date_column(bids,
+                            col_name = "DATE_UTC",
+                            output_col_name = "DATE_UTC_clean",
+                            verbose = verbose)
+
+  bids <- clean_device_type_column(bids,
+                                   col_name = "DEVICE_TYPE",
+                                   output_col_name = "DEVICE_TYPE_clean",
+                                   verbose = verbose)
+
+  bids <- clean_response_time_column(bids,
+                                     col_name = "RESPONSE_TIME",
+                                     output_col_name = "RESPONSE_TIME_clean",
+                                     extract_digits = TRUE,
+                                     verbose = verbose)
+
+  bids <- clean_requested_sizes_column(bids,
+                                       col_name = "REQUESTED_SIZES",
+                                       output_col_name = "REQUESTED_SIZES_clean",
+                                       verbose = verbose)
+
+  duplicate_handler <- remove_duplicates(bids,
+                                         exclude_cols = c("row_id"),
+                                         verbose = verbose)
+  bids <- duplicate_handler[["df"]]
+  removed_indices <- duplicate_handler[["removed_indices"]]
+
+  if (!is.null(save_path)) {
+    write_parquet(bids, save_path)
+  }
+
+  return(bids)
+}
+
 
 # ---- Timing Start ----
 run_time <- system.time({
@@ -50,42 +120,14 @@ cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste
 bids_type_summary <- check_column_types(bids, expected_columns)
 print(bids_type_summary)
 
-#------------------------------------------------------
-# PRICE COLUMN: CONVERT TO NUMERIC
-# AND HANDLE IMPOSSIBLE VALUES
-#------------------------------------------------------
-bids <- clean_price_column(bids, min_price = 0, max_price = 10, fix_leading_o = TRUE)
+save_path <- NULL
+# save_path <- here("data", "bids_data_vDTR_clean.parquet")
+bids <- data_cleaning_pipeline(bids, expected_columns, zip_code_db, save_path, verbose = TRUE)
 
-#------------------------------------------------------
-# DEVICE_GEO_REGION COLUMN: STANDARDIZE OREGON CODES
-#------------------------------------------------------
-bids <- clean_geo_region_column(bids, verbose = TRUE)
-
-#------------------------------------------------------
-# DEVICE_GEO_ZIP COLUMN: CONVERT TO STRING AND
-# HANDLE SENTINEL VALUES
-#------------------------------------------------------
-bids <- clean_zip_column(bids, zip_code_db = zip_code_db, verbose = TRUE)
-
-#------------------------------------------------------
-# RESPONSE_TIME COLUMN: CONVERT TO INTEGER
-#------------------------------------------------------
-bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE, output_col_name = "RESPONSE_TIME_clean")
-na_response_time <- sum(is.na(bids$RESPONSE_TIME_clean))
-cat(glue("There are {na_response_time} NA response times"), "\n")
+cat("\n")
 
 
-#------------------------------------------------------
-# TIMESTAMP COLUMN: CONVERT TO POSIXct
-#------------------------------------------------------
-bids <- convert_to_posixct(bids, "TIMESTAMP")
-TIMESTAMP_na_count <- sum(is.na(bids$TIMESTAMP_clean))
-cat(glue("There are {TIMESTAMP_na_count} NAs in the TIMESTAMP_clean column"), "\n")
 
-#------------------------------------------------------
-# DEVICE_GEO_CITY: FILL MISSING CITIES FROM ZIP LOOKUP
-#------------------------------------------------------
-bids <- clean_city_column(bids, zip_code_db = zip_code_db, verbose = TRUE)
 })  # ---- Timing End ----
 
 cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']], 2)} seconds\n"))
@@ -94,156 +136,6 @@ cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']
 
 
 
-# #------------------------------------------------------
-# # DEVICE_GEO_CITY: FILL MISSING CITIES FROM ZIP LOOKUP
-# #------------------------------------------------------
-# # Count missing before
-# city_missing_before <- sum(is.na(bids$DEVICE_GEO_CITY))
-
-# # Get ZIP → city lookup from zipcodeR
-# zip_db <- zip_code_db %>%
-#   select(zipcode, major_city)
-
-# # Join and fill missing cities where ZIP is available
-# bids <- bids %>%
-#   mutate(DEVICE_GEO_CITY_clean = DEVICE_GEO_CITY) %>%
-#   left_join(zip_db, by = c("DEVICE_GEO_ZIP_clean" = "zipcode")) %>%
-#   mutate(
-#     DEVICE_GEO_CITY_clean = ifelse(
-#       is.na(DEVICE_GEO_CITY_clean) & !is.na(major_city),
-#       major_city,
-#       DEVICE_GEO_CITY_clean
-#     )
-#   ) %>%
-#   select(-major_city)
-
-# # Report results
-# city_missing_after <- sum(is.na(bids$DEVICE_GEO_CITY_clean))
-# city_recovered <- city_missing_before - city_missing_after
-
-# cat("\n")
-# cat(strrep("-", 50), "\n")
-# cat("CITY RECOVERY REPORT\n")
-# cat(strrep("-", 50), "\n")
-# cat(sprintf("  Original missing:  %d\n", city_missing_before))
-# cat(sprintf("  Recovered via ZIP: %d\n", city_recovered))
-# cat(sprintf("  Remaining NA:      %d\n", city_missing_after))
-# cat(strrep("-", 50), "\n")
-
-# # Check what ZIPs aren't matching (for debugging)
-# if (city_missing_after > 0) {
-#   unmatched_zips <- bids %>%
-#     filter(!is.na(DEVICE_GEO_ZIP_clean) & is.na(DEVICE_GEO_CITY_clean)) %>%
-#     count(DEVICE_GEO_ZIP_clean, sort = TRUE)
-#   cat(sprintf("  Unmatched ZIPs: %d unique values\n", nrow(unmatched_zips)))
-#   cat("  Top unmatched ZIPs:\n")
-#   print(head(unmatched_zips, 10))
-# }
-
-#------------------------------------------------------
-# DEVICE_GEO_LAT AND DEVICE_GEO_LONG: FILTER OUT IMPLAUSIBLE COORDINATES
-#------------------------------------------------------
-
-coord_summary <- bids %>%
-  summarise(
-    min_lat  = min(DEVICE_GEO_LAT,  na.rm = TRUE),
-    max_lat  = max(DEVICE_GEO_LAT,  na.rm = TRUE),
-    min_long = min(DEVICE_GEO_LONG, na.rm = TRUE),
-    max_long = max(DEVICE_GEO_LONG, na.rm = TRUE)
-  )
-
-#
-coord_summary %>%
-  mutate(
-    lat_within_oregon =
-      min_lat >= 42 & max_lat <= 46.5,
-
-    long_within_oregon =
-      min_long >= -125 & max_long <= -116
-  )
-#
-if (coord_summary$min_lat >= 42 & coord_summary$max_lat <= 46.5) {
-  cat("Latitudes are consistent with Oregon.\n")
-} else {
-  cat("Latitudes include locations outside Oregon.\n")
-}
-
-if (coord_summary$min_long >= -125 & coord_summary$max_long <= -116) {
-  cat("Longitudes are consistent with Oregon.\n")
-} else {
-  cat("Longitudes include locations outside Oregon.\n")
-}
-
-bids_implausible_coords <- bids %>%
-  filter(
-    DEVICE_GEO_LAT  < 42   | DEVICE_GEO_LAT  > 46.5 |
-    DEVICE_GEO_LONG < -125 | DEVICE_GEO_LONG > -116
-  )
-# count
-
-bids_implausible_coords %>% nrow()
-
-lat_min <- 42
-lat_max <- 46.5
-long_min <- -125
-long_max <- -116
-
-bids <- bids %>%
-  mutate(
-    DEVICE_GEO_LAT_clean = ifelse(
-      DEVICE_GEO_LAT >= lat_min & DEVICE_GEO_LAT <= lat_max,
-      DEVICE_GEO_LAT,
-      NA
-    ),
-
-    DEVICE_GEO_LONG_clean = ifelse(
-      DEVICE_GEO_LONG >= long_min & DEVICE_GEO_LONG <= long_max,
-      DEVICE_GEO_LONG,
-      NA
-    )
-  )
-#------------------------------------------------------
-# BID_WON COLUMN: CONVERT TO LOGICAL
-#------------------------------------------------------
-cat("Current values in BID_WON:\n")
-print(table(bids$BID_WON, useNA = "always"))
-
-# Fix the "true" values to "TRUE"
-bids <- bids %>%
-  mutate(
-    BID_WON_clean = case_when(
-      tolower(BID_WON) == "true" ~ "TRUE",
-      tolower(BID_WON) == "false" ~ "FALSE",
-      BID_WON == "TRUE" ~ "TRUE",
-      BID_WON == "FALSE" ~ "FALSE",
-      TRUE ~ NA_character_  # Set anything else to NA
-    )
-  )
-
-
-cat("\nCleaned BID_WON_clean:\n")
-print(table(bids$BID_WON_clean, useNA = "always"))
-
-#------------------------------------------------------
-# DUPLICATE ROW HANDLING
-#------------------------------------------------------
-unique_ids <- dplyr::count(bids, row_id)
-num_unique_ids <- length(unique(bids$row_id))
-cat(glue("nrows == num_unique_ids: {num_unique_ids == nrow(bids)}"), "\n")
-
-duplicate_check <- find_duplicates(bids, exclude_cols = c("row_id"))
-duplicate_indices <- duplicate_check$duplicate_indices
-num_duplicates <- duplicate_check$num_duplicates
-
-cat(glue("There are {num_duplicates} duplicate rows in the dataset"), "\n")
-cat("first 10 duplicate rows: ", duplicate_indices[1:10], "\n")
-
-duplicate_handler <- remove_duplicates(bids, exclude_cols = c("row_id"))
-bids_nodup <- duplicate_handler[["df"]]
-removed_indices <- duplicate_handler[["removed_indices"]]
-
-
-cat("\n")
 
 
 # # Fill missing cities where ZIP is available
@@ -369,13 +261,6 @@ cat("\n")
 #   cat("APPLYING TYPE CONVERSIONS\n")
 #   cat(strrep("=", 70), "\n")
 #
-#   bids <- convert_to_numeric(bids, "PRICE", fix_leading_o = TRUE)
-#   bids <- convert_to_posixct(bids, "TIMESTAMP")
-#   bids <- convert_to_date(bids, "DATE_UTC")
-#   bids <- convert_to_character(bids, "DEVICE_TYPE")
-#   bids <- convert_to_list(bids, "REQUESTED_SIZES")
-#   bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE)
-#   bids <- convert_to_logical(bids, "BID_WON")
 #
 #   # Verify conversions
 #   cat("\n")

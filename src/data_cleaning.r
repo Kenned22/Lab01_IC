@@ -378,10 +378,12 @@ convert_column <- function(df, col_name, target_type,
     output_col_name <- paste0(col_name, "_clean")
   }
 
-  # Apply preprocessing if provided
+  # Apply preprocessing if provided otherwise copy source column
   if (!is.null(preprocess_fn)) {
     if (verbose) cat("Applying preprocessing...\n")
     df[[output_col_name]] <- preprocess_fn(df[[col_name]])
+  }else{
+    df[[output_col_name]] <- df[[col_name]]
   }
 
   # Perform conversion with error handling
@@ -407,36 +409,8 @@ convert_column <- function(df, col_name, target_type,
 }
 
 # ==============================================================================
-# TYPE CONVERSION WRAPPERS
+# Column Cleaning Functions
 # ==============================================================================
-
-# # convert column in df to numeric. Handle leading "O" --> 0 if fix_leading_o = TRUE.
-
-# #' @param df A data frame
-# #' @param col_name Name of the column to convert to numeric
-# #' @param fix_leading_o gsub "O" --> 0
-# #' @param verbose Whether to print messages
-# #' @return Data frame with converted column
-# convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading_o = FALSE, verbose = TRUE) {
-#   preprocess <- if (fix_leading_o) {
-#     function(x) {
-#       problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
-#       if (verbose && length(problem_rows) > 0) {
-#         cat(glue("Found {length(problem_rows)} non-numeric value(s), attempting to fix..."), "\n")
-#       }
-#       gsub("^O", "0", x)
-#     }
-#   } else {
-#     NULL
-#   }
-
-#   convert_column(df,
-#                  col_name = col_name,
-#                  target_type = "numeric",
-#                  preprocess_fn = preprocess,
-#                  output_col_name = output_col_name,
-#                  verbose = verbose)
-# }
 
 # Clean PRICE column
 #
@@ -531,6 +505,7 @@ clean_geo_region_column <- function(df,
 
   df
 }
+
 
 #' Clean and validate ZIP codes with spatial recovery
 #'
@@ -665,6 +640,7 @@ clean_zip_column <- function(df,
   df
 }
 
+
 #' Clean and recover missing city names using ZIP code lookup
 #'
 #' Creates a cleaned city column by copying existing DEVICE_GEO_CITY values
@@ -692,8 +668,12 @@ clean_city_column <- function(df,
                               oregon_zip_path = here("data", "oregon_zip_code_db.parquet"),
                               output_col_name = "DEVICE_GEO_CITY_clean",
                               verbose = TRUE) {
-  # Count missing before
-  city_missing_before <- sum(is.na(df$DEVICE_GEO_CITY))
+
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Cleaning DEVICE_GEO_CITY column"), "\n")
+    cat(strrep("=", 60), "\n")
+  }
 
   # Get ZIP → city lookup from zipcodeR
   if (is.null(zip_code_db)) {
@@ -702,8 +682,8 @@ clean_city_column <- function(df,
     zip_code_db <- zip_code_db
   }
 
-  zip_db <- zip_code_db %>%
-    select(.data$zipcode, .data$major_city)
+  zip_db <- zipcodeR::zip_code_db %>%
+    select("zipcode", "major_city")
 
   # Join and fill missing cities where ZIP is available
   df <- df %>%
@@ -716,59 +696,177 @@ clean_city_column <- function(df,
         .data$DEVICE_GEO_CITY_clean
       )
     ) %>%
-    select(-.data$major_city)
+    select(-"major_city")
 
-  # Report results
-  city_missing_after <- sum(is.na(df$DEVICE_GEO_CITY_clean))
-  city_recovered <- city_missing_before - city_missing_after
 
-  cat("\n")
-  cat(strrep("-", 50), "\n")
-  cat("CITY RECOVERY REPORT\n")
-  cat(strrep("-", 50), "\n")
-  cat(sprintf("  Original missing:  %d\n", city_missing_before))
-  cat(sprintf("  Recovered via ZIP: %d\n", city_recovered))
-  cat(sprintf("  Remaining NA:      %d\n", city_missing_after))
-  cat(strrep("-", 50), "\n")
+  if (verbose) {
+    city_missing_before <- sum(is.na(df$DEVICE_GEO_CITY))
+    city_missing_after <- sum(is.na(df$DEVICE_GEO_CITY_clean))
+    city_recovered <- city_missing_before - city_missing_after
 
-  # Check what ZIPs aren't matching (for debugging)
-  if (city_missing_after > 0) {
-    unmatched_zips <- df %>%
-      filter(!is.na(.data$DEVICE_GEO_ZIP_clean) & is.na(.data$  DEVICE_GEO_CITY_clean)) %>%
-      count(.data$DEVICE_GEO_ZIP_clean, sort = TRUE)
-    cat(sprintf("  Unmatched ZIPs: %d unique values\n", nrow(unmatched_zips)))
-    cat("  Top unmatched ZIPs:\n")
-    print(head(unmatched_zips, 10))
+    cat("\n")
+    cat(strrep("-", 50), "\n")
+    cat("CITY RECOVERY REPORT\n")
+    cat(strrep("-", 50), "\n")
+    cat(sprintf("  Original missing:  %d\n", city_missing_before))
+    cat(sprintf("  Recovered via ZIP: %d\n", city_recovered))
+    cat(sprintf("  Remaining NA:      %d\n", city_missing_after))
+    cat(strrep("-", 50), "\n")
+
+    # Check what ZIPs aren't matching (for debugging)
+    if (city_missing_after > 0) {
+      unmatched_zips <- df %>%
+        filter(!is.na(.data$DEVICE_GEO_ZIP_clean) & is.na(.data$  DEVICE_GEO_CITY_clean)) %>%
+        count(.data$DEVICE_GEO_ZIP_clean, sort = TRUE)
+      cat(sprintf("  Unmatched ZIPs: %d unique values\n", nrow(unmatched_zips)))
+      cat("  Top unmatched ZIPs:\n")
+      print(head(unmatched_zips, 10))
+    }
   }
 
   df
 }
 
 
-#' Convert column to POSIXct timestamp
+#' Clean and validate geographic coordinates
 #'
-#' @param df A data frame
-#' @param col_name Name of column to convert
-#' @param format Datetime format string
-#' @param tz Timezone
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_posixct <- function(df, col_name,
-                               format = "%Y-%m-%d %H:%M:%S",
-                               tz = "UTC",
-                               verbose = TRUE,
-                               date_col = "DATE_UTC",
-                               timestamp_col = "TIMESTAMP",
-                               output_col = "TIMESTAMP_clean") {
+#' Validates latitude and longitude values against specified bounds (defaulting
+#' to Oregon's geographic extent). Creates cleaned columns where out-of-bounds
+#' coordinates are set to NA.
+#'
+#' @param df A data frame containing DEVICE_GEO_LAT and DEVICE_GEO_LONG columns
+#' @param lat_min Minimum valid latitude (default: 42, Oregon's southern border)
+#' @param lat_max Maximum valid latitude (default: 46.5, Oregon's northern border)
+#' @param long_min Minimum valid longitude (default: -125, Oregon's western coast)
+#' @param long_max Maximum valid longitude (default: -116, Oregon's eastern border)
+#' @param verbose Logical; if TRUE, prints coordinate summary and count of
+#'   implausible values (default: TRUE)
+#' @return Data frame with DEVICE_GEO_LAT_clean and DEVICE_GEO_LONG_clean
+#'   columns added, containing valid coordinates or NA
+#' @examples
+#' df_clean <- clean_geo_coordinates_column(bids_df)
+#' df_clean <- clean_geo_coordinates_column(bids_df, lat_min = 40, lat_max = 50)
+clean_geo_coordinates_column <- function(df,
+                                         lat_min = 42,
+                                         lat_max = 46.5,
+                                         long_min = -125,
+                                         long_max = -116,
+                                         verbose = TRUE) {
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Cleaning DEVICE_GEO_LAT and DEVICE_GEO_LONG columns"), "\n")
+    cat(strrep("=", 60), "\n")
+  }
 
-  # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
-  # but some dates are str "NA" and when dates are present, there are two different formats. Compared
-  # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
-  # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
-  # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
-  # column to TIMESTAMP_0.
+  df <- df %>%
+    mutate(
+      DEVICE_GEO_LAT_clean = ifelse(
+        .data$DEVICE_GEO_LAT >= lat_min & .data$DEVICE_GEO_LAT <= lat_max,
+        .data$DEVICE_GEO_LAT,
+        NA
+      ),
 
-  # df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
+      DEVICE_GEO_LONG_clean = ifelse(
+        .data$DEVICE_GEO_LONG >= long_min & .data$DEVICE_GEO_LONG <= long_max,
+        .data$DEVICE_GEO_LONG,
+        NA
+      )
+    )
+
+  if (verbose) {
+    coord_summary <- df %>%
+      summarise(
+        min_lat  = min(.data$DEVICE_GEO_LAT,  na.rm = TRUE),
+        max_lat  = max(.data$DEVICE_GEO_LAT,  na.rm = TRUE),
+        min_long = min(.data$DEVICE_GEO_LONG, na.rm = TRUE),
+        max_long = max(.data$DEVICE_GEO_LONG, na.rm = TRUE)
+      )
+
+    #
+    coord_summary %>%
+      mutate(
+        lat_within_oregon =
+          .data$min_lat >= 42 & .data$max_lat <= 46.5,
+
+        long_within_oregon =
+          .data$min_long >= -125 & .data$max_long <= -116
+      )
+    #
+    if (coord_summary$min_lat >= 42 && coord_summary$max_lat <= 46.5) {
+      cat("Latitudes are consistent with Oregon.\n")
+    } else {
+      cat("Latitudes include locations outside Oregon.\n")
+    }
+
+    if (coord_summary$min_long >= -125 && coord_summary$max_long <= -116) {
+      cat("Longitudes are consistent with Oregon.\n")
+    } else {
+      cat("Longitudes include locations outside Oregon.\n")
+    }
+
+    bids_implausible_coords <- df %>%
+      filter(
+        .data$DEVICE_GEO_LAT  < lat_min   | .data$DEVICE_GEO_LAT  > lat_max |
+        .data$DEVICE_GEO_LONG < long_min | .data$DEVICE_GEO_LONG > long_max
+      )
+
+    cat(glue("Number of implausible coordinates: {bids_implausible_coords %>% nrow()}"), "\n")
+  }
+
+  df
+}
+
+clean_bids_won_column <- function(df, verbose = TRUE) {
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Cleaning BID_WON column"), "\n")
+    cat(strrep("=", 60), "\n")
+  }
+
+  df <- df %>%
+    mutate(
+      BID_WON_clean = case_when(
+        tolower(.data$BID_WON) == "true" ~ "TRUE",
+        tolower(.data$BID_WON) == "false" ~ "FALSE",
+        .data$BID_WON == "TRUE" ~ "TRUE",
+        .data$BID_WON == "FALSE" ~ "FALSE",
+        TRUE ~ NA_character_
+      )
+    )
+
+  if (verbose) {
+    cat("Current values in BID_WON:\n")
+    print(table(df$BID_WON, useNA = "always"))
+    cat("\n")
+    cat(glue("Current values in BID_WON_clean:\n"))
+    print(table(df$BID_WON_clean, useNA = "always"))
+  }
+
+  df
+}
+
+#' Clean and convert timestamp column to POSIXct
+#'
+#' Combines date from DATE_UTC column with time from TIMESTAMP column to create
+#' a clean POSIXct timestamp. This handles inconsistent date formats in the
+#' original TIMESTAMP column by using the reliably formatted DATE_UTC.
+#'
+#' @param df A data frame containing TIMESTAMP and DATE_UTC columns
+#' @param col_name Name of column (not used directly, kept for API consistency)
+#' @param format Datetime format string (default: "%Y-%m-%d %H:%M:%S")
+#' @param tz Timezone (default: "UTC")
+#' @param verbose Whether to print messages (default: TRUE)
+#' @param date_col Name of the date column to use (default: "DATE_UTC")
+#' @param timestamp_col Name of the timestamp column (default: "TIMESTAMP")
+#' @param output_col Name for the output column (default: "TIMESTAMP_clean")
+#' @return Data frame with TIMESTAMP_clean column added as POSIXct
+clean_timestamp_column <- function(df, col_name,
+                                   format = "%Y-%m-%d %H:%M:%S",
+                                   tz = "UTC",
+                                   verbose = TRUE,
+                                   date_col = "DATE_UTC",
+                                   timestamp_col = "TIMESTAMP",
+                                   output_col = "TIMESTAMP_clean") {
 
   df <- df %>%
     separate(
@@ -789,41 +887,61 @@ convert_to_posixct <- function(df, col_name,
                  timestamp_col = timestamp_col)
 }
 
-#' Convert column to Date
+
+#' Clean and convert column to Date
+#'
+#' Converts a character column to Date format.
 #'
 #' @param df A data frame
 #' @param col_name Name of column to convert
-#' @param format Date format string
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_date <- function(df, col_name,
-                            format = "%Y-%m-%d",
-                            verbose = TRUE) {
+#' @param format Date format string (default: "%Y-%m-%d")
+#' @param output_col_name Name for the output column (default: "DATE_UTC_clean")
+#' @param verbose Whether to print messages (default: TRUE)
+#' @return Data frame with converted Date column added
+clean_date_column <- function(df, col_name,
+                              format = "%Y-%m-%d",
+                              output_col_name = "DATE_UTC_clean",
+                              verbose = TRUE) {
   convert_column(df, col_name, "Date",
-                 format = format, verbose = verbose)
+                 format = format,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
 }
 
-#' Convert column to character
+#' Clean and convert DEVICE_TYPE column to character
 #'
-#' @param df A data frame
+#' Converts DEVICE_TYPE column to character format for consistent handling.
+#'
+#' @param df A data frame containing the device type column
 #' @param col_name Name of column to convert
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_character <- function(df, col_name, verbose = TRUE) {
-  convert_column(df, col_name, "character", verbose = verbose)
+#' @param output_col_name Name for the output column (default: "DEVICE_TYPE_clean")
+#' @param verbose Whether to print messages (default: TRUE)
+#' @return Data frame with DEVICE_TYPE_clean column added as character
+clean_device_type_column <- function(df, col_name,
+                                     output_col_name = "DEVICE_TYPE_clean",
+                                     verbose = TRUE) {
+  convert_column(df, col_name, "character",
+                 output_col_name = output_col_name,
+                 verbose = verbose)
 }
 
-#' Convert column to integer with digit extraction
+
+#' Clean and convert RESPONSE_TIME column to integer
 #'
-#' @param df A data frame
+#' Converts RESPONSE_TIME to integer, optionally extracting only numeric
+#' digits from string values before conversion.
+#'
+#' @param df A data frame containing the response time column
 #' @param col_name Name of column to convert
 #' @param extract_digits Whether to extract only digits before converting
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_integer <- function(df, col_name,
-                               extract_digits = FALSE,
-                               output_col_name = NULL,
-                               verbose = TRUE) {
+#'   (default: TRUE)
+#' @param output_col_name Name for the output column (default: "RESPONSE_TIME_clean")
+#' @param verbose Whether to print messages (default: TRUE)
+#' @return Data frame with RESPONSE_TIME_clean column added as integer
+clean_response_time_column <- function(df, col_name,
+                                       extract_digits = TRUE,
+                                       output_col_name = "RESPONSE_TIME_clean",
+                                       verbose = TRUE) {
   preprocess <- if (extract_digits) {
     function(x) {
       if (verbose) cat("Extracting digits from string...", "\n")
@@ -839,36 +957,21 @@ convert_to_integer <- function(df, col_name,
                  verbose = verbose)
 }
 
-#' Convert column to logical
-#'
-#' @param df A data frame
-#' @param col_name Name of column to convert
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_logical <- function(df, col_name, verbose = TRUE) {
-  convert_column(df, col_name, "logical", verbose = verbose)
-}
 
-#' Convert column to list (for JSON-like data)
+#' Clean and parse REQUESTED_SIZES column from JSON to list
 #'
-#' @param df A data frame
+#' Parses JSON-formatted strings in REQUESTED_SIZES column into R lists.
+#'
+#' @param df A data frame containing the requested sizes column
 #' @param col_name Name of column to convert
-#' @param parser Function to parse each element (default: fromJSON)
-#' @param verbose Whether to print messages
-#' @return Data frame with converted column
-convert_to_list <- function(df, col_name,
-                            parser = jsonlite::fromJSON,
-                            verbose = TRUE) {
-  preprocess <- function(x) {
-    lapply(x, parser)
-  }
-
-  if (is.list(df[[col_name]])) {
-    if (verbose) {
-      cat(glue("Column {col_name} is already a list. No conversion needed."), "\n\n")
-    }
-    return(df)
-  }
+#' @param output_col_name Name for the output column (default: "REQUESTED_SIZES_clean")
+#' @param parser Function to parse each element (default: jsonlite::fromJSON)
+#' @param verbose Whether to print messages (default: TRUE)
+#' @return Data frame with REQUESTED_SIZES_clean column added as list
+clean_requested_sizes_column <- function(df, col_name,
+                                         output_col_name = "REQUESTED_SIZES_clean",
+                                         parser = jsonlite::fromJSON,
+                                         verbose = TRUE) {
 
   if (verbose) {
     cat("\n", strrep("=", 60), "\n")
@@ -877,7 +980,18 @@ convert_to_list <- function(df, col_name,
     cat("Parsing JSON elements...", "\n")
   }
 
-  df[[col_name]] <- preprocess(df[[col_name]])
+  preprocess <- function(x) {
+    lapply(x, parser)
+  }
+
+  if (is.list(df[[output_col_name]])) {
+    if (verbose) {
+      cat(glue("Column {col_name} is already a list. No conversion needed."), "\n\n")
+    }
+    return(df)
+  }
+
+  df[[output_col_name]] <- preprocess(df[[col_name]])
 
   if (verbose) {
     cat(glue("{col_name} is now: list"), "\n\n")
@@ -885,6 +999,7 @@ convert_to_list <- function(df, col_name,
 
   df
 }
+
 
 # ==============================================================================
 # DATA CLEANING FUNCTIONS
@@ -908,6 +1023,7 @@ remove_na_rows <- function(df, verbose = TRUE) {
   clean_df
 }
 
+
 #' Remove duplicate rows
 #'
 #' @param df A data frame
@@ -916,6 +1032,12 @@ remove_na_rows <- function(df, verbose = TRUE) {
 #' @return Data frame with duplicates removed
 remove_duplicates <- function(df, exclude_cols = NULL, verbose = TRUE) {
   original_rows <- nrow(df)
+
+  if (verbose) {
+    cat("\n", strrep("=", 60), "\n")
+    cat(glue("Removing duplicate rows"), "\n")
+    cat(strrep("=", 60), "\n")
+  }
 
   if (!is.null(exclude_cols)) {
     check_cols <- setdiff(names(df), exclude_cols)
@@ -931,6 +1053,7 @@ remove_duplicates <- function(df, exclude_cols = NULL, verbose = TRUE) {
     cat(glue("Removed {removed_rows} duplicate rows."), "\n")
     cat(glue("Remaining rows: {nrow(clean_df)}"), "\n")
   }
+
   list(
     df = clean_df,
     removed_indices = removed_rows
