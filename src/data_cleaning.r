@@ -398,76 +398,49 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
                  verbose = verbose)
 }
 
-#' #' Convert column to POSIXct timestamp
-#' #'
-#' #' @param df A data frame
-#' #' @param col_name Name of column to convert
-#' #' @param format Datetime format string
-#' #' @param tz Timezone
-#' #' @param verbose Whether to print messages
-#' #' @return Data frame with converted column
-#' convert_to_posixct <- function(df, col_name,
-#'                                format = "%Y-%m-%d %H:%M:%S",
-#'                                tz = "UTC",
-#'                                verbose = TRUE,
-#'                                date_col = "DATE_UTC",
-#'                                timestamp_col = "TIMESTAMP",
-#'                                output_col = "TIMESTAMP") {
+#' Convert column to POSIXct timestamp
 #'
-#'   # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
-#'   # but some dates are str "NA" and when dates are present, there are two different formats. Compared
-#'   # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
-#'   # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
-#'   # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
-#'   # column to TIMESTAMP_0.
-#'
-#'   # TO DO: FORMAT AS A PREPROCESSING FUNCTION FOR THE CONVERT_COLUMN FUNCTION
-#'   # datetime_conversion_func <- function(df,
-#'   #                                      date_col = "DATE_UTC",
-#'   #                                      timestamp_col = "TIMESTAMP",
-#'   #                                      output_col = "TIMESTAMP_corrected") {
-#'   #   df <- df %>%
-#'   #     separate(
-#'   #       timestamp_col,
-#'   #       into = c("TIMESTAMP_date", "TIMESTAMP_time"),
-#'   #       sep = " ",
-#'   #       remove = FALSE
-#'   #     ) %>%
-#'   #     mutate(
-#'   #       TIMESTAMP_date_clean = case_when(
-#'   #         .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
-#'   #         TRUE ~ .data$TIMESTAMP_date
-#'   #       )
-#'   #     ) %>%
-#'   #     mutate(
-#'   #       "{output_col}" := paste(.data$TIMESTAMP_date_clean, .data$TIMESTAMP_time)
-#'   #     )
-#'   # }
-#'
-#'   df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
-#'
-#'   df <- df %>%
-#'     separate(
-#'       "TIMESTAMP_0",
-#'       into = c("TIMESTAMP_date", "TIMESTAMP_time"),
-#'       sep = " ",
-#'       remove = FALSE
-#'     ) %>%
-#'     # mutate(
-#'     #   TIMESTAMP_date_clean = case_when(
-#'     #     .data$TIMESTAMP_date == "NA" ~ as.character(.data[[date_col]]),
-#'     #     TRUE ~ .data$TIMESTAMP_date
-#'     #   )
-#'     # ) %>%
-#'     mutate(
-#'       "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
-#'     )
-#'
-#'
-#'
-#'   convert_column(df, output_col, "POSIXct",
-#'                  format = format, tz = tz, verbose = verbose)
-#' }
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param format Datetime format string
+#' @param tz Timezone
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_posixct <- function(df, col_name,
+                               format = "%Y-%m-%d %H:%M:%S",
+                               tz = "UTC",
+                               verbose = TRUE,
+                               date_col = "DATE_UTC",
+                               timestamp_col = "TIMESTAMP",
+                               output_col = "TIMESTAMP_clean") {
+
+  # checked DATE_UTC and TIMESTAMP columns. DATE_UTC is only the date and TIME STAMP has date and time
+  # but some dates are str "NA" and when dates are present, there are two different formats. Compared
+  # all dates present in TIMESTAMP to those in DATE_UTC, and found they are the same. Decided to take
+  # take the dates from DATE_UTC, which has consistant formatting, and time from TIMESTAMP, and made
+  # new column TIMESTAMP, which is the concatenation of the date and time. Renamed old TIMESTAMP
+  # column to TIMESTAMP_0.
+
+  # df <- df %>% rename(TIMESTAMP_0 = "TIMESTAMP")
+
+  df <- df %>%
+    separate(
+      "TIMESTAMP",
+      into = c("TIMESTAMP_date", "TIMESTAMP_time"),
+      sep = " ",
+      remove = FALSE
+    ) %>%
+    mutate(
+      "{output_col}" := paste(.data[[date_col]], .data$TIMESTAMP_time)
+    )
+
+  convert_column(df, col_name = output_col, output_col_name = output_col, target_type = "POSIXct",
+                 format = format,
+                 tz = tz,
+                 verbose = verbose,
+                 date_col = date_col,
+                 timestamp_col = timestamp_col)
+}
 
 #' Convert column to Date
 #'
@@ -493,28 +466,31 @@ convert_to_character <- function(df, col_name, verbose = TRUE) {
   convert_column(df, col_name, "character", verbose = verbose)
 }
 
-# #' Convert column to integer with digit extraction
-# #'
-# #' @param df A data frame
-# #' @param col_name Name of column to convert
-# #' @param extract_digits Whether to extract only digits before converting
-# #' @param verbose Whether to print messages
-# #' @return Data frame with converted column
-# convert_to_integer <- function(df, col_name,
-#                                extract_digits = FALSE,
-#                                verbose = TRUE) {
-#   preprocess <- if (extract_digits) {
-#     function(x) {
-#       if (verbose) cat("Extracting digits from string...\n")
-#       gsub("[^0-9]", "", x)
-#     }
-#   } else {
-#     NULL
-#   }
+#' Convert column to integer with digit extraction
+#'
+#' @param df A data frame
+#' @param col_name Name of column to convert
+#' @param extract_digits Whether to extract only digits before converting
+#' @param verbose Whether to print messages
+#' @return Data frame with converted column
+convert_to_integer <- function(df, col_name,
+                               extract_digits = FALSE,
+                               output_col_name = NULL,
+                               verbose = TRUE) {
+  preprocess <- if (extract_digits) {
+    function(x) {
+      if (verbose) cat("Extracting digits from string...\n")
+      gsub("[^0-9]", "", x)
+    }
+  } else {
+    NULL
+  }
 
-#   convert_column(df, col_name, "integer",
-#                  preprocess_fn = preprocess, verbose = verbose)
-# }
+  convert_column(df, col_name, "integer",
+                 preprocess_fn = preprocess,
+                 output_col_name = output_col_name,
+                 verbose = verbose)
+}
 
 #' Convert column to logical
 #'

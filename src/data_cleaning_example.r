@@ -220,8 +220,47 @@ cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']
 
 
 #------------------------------------------------------
+# RESPONSE_TIME COLUMN: CONVERT TO INTEGER
+#------------------------------------------------------
+bids <- convert_to_integer(bids, "RESPONSE_TIME", extract_digits = TRUE, output_col_name = "RESPONSE_TIME_clean")
+na_response_time <- sum(is.na(bids$RESPONSE_TIME_clean))
+cat(glue("There are {na_response_time} NA response times"))
+
+
+#------------------------------------------------------
+# TIMESTAMP COLUMN: CONVERT TO POSIXct
+#------------------------------------------------------
+bids <- convert_to_posixct(bids, "TIMESTAMP")
+TIMESTAMP_na_count <- sum(is.na(bids$TIMESTAMP_clean))
+cat(glue("There are {TIMESTAMP_na_count} NAs in the TIMESTAMP_clean column"))
+
+#------------------------------------------------------
+# DUPLICATE ROW HANDLING
+#------------------------------------------------------
+unique_ids <- dplyr::count(bids, row_id)
+num_unique_ids <- length(unique(bids$row_id))
+cat(glue("nrows == num_unique_ids: {num_unique_ids == nrow(bids)}"))
+
+duplicate_check <- find_duplicates(bids, exclude_cols = c("row_id"))
+duplicate_indices <- duplicate_check$duplicate_indices
+num_duplicates <- duplicate_check$num_duplicates
+
+cat(glue("There are {num_duplicates} duplicate rows in the dataset"), "\n")
+cat("first 10 duplicate rows: ", duplicate_indices[1:10])
+
+duplicate_handler <- remove_duplicates(bids, exclude_cols = c("row_id"))
+bids_nodup <- duplicate_handler[["df"]]
+removed_indices <- duplicate_handler[["removed_indices"]]
+#------------------------------------------------------
 #
 #------------------------------------------------------
+
+
+#------------------------------------------------------
+#
+#------------------------------------------------------
+
+cat("\n")
 
 
 # })

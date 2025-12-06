@@ -3139,6 +3139,7 @@ Values (20–30 minutes)</a>
 duplicates</a></li>
 <li><a href="#out-of-range-latitudelongitude-optional-but-recommended" id="toc-out-of-range-latitudelongitude-optional-but-recommended"><span class="toc-section-number">7.2</span> Out-of-range latitude/longitude
 (optional but recommended)</a></li>
+<li><a href="#clear-bid_won-option" id="toc-clear-bid_won-option"><span class="toc-section-number">7.3</span> Clear BID_WON (Option)</a></li>
 </ul></li>
 <li><a href="#creating-a-final-cleaned-dataset-1015-minutes" id="toc-creating-a-final-cleaned-dataset-1015-minutes"><span class="toc-section-number">8</span> Creating a Final Cleaned Dataset
 (10–15 minutes)</a></li>
@@ -3700,8 +3701,8 @@ DT::datatable(ex,
     backgroundColor = &quot;white&quot;,
     color = &quot;black&quot;
   )</code></pre>
-<div class="datatables html-widget html-fill-item" id="htmlwidget-55e6367cf3401eae8cc0" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-55e6367cf3401eae8cc0">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5"],["0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb"],["2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37"],["2025-10-21","2025-10-21","2025-10-21","2025-10-21","2025-10-21"],["LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5"],[4,4,4,4,4],["Salem","Salem","Salem","Salem","Salem"],["97302","97302","97302","97302","97302"],["0.04","0.06728","0.23","0.044751","0.007678"],["[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]"],["320x50","320x50","320x50","320x50","320x50"],["RESPONSE_TIME: 259","RESPONSE_TIME: 86","RESPONSE_TIME: 80","RESPONSE_TIME: 259","RESPONSE_TIME: 461"],["FALSE","FALSE","TRUE","FALSE","FALSE"],[44.9036,44.9036,44.9036,44.9036,44.9036],[-123.0461,-123.0461,-123.0461,-123.0461,-123.0461],["OR","OR","OR","OR","OR"],[1,2,3,4,5]],"container":"<table class=\"compact stripe\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>AUCTION_ID<\/th>\n      <th>TIMESTAMP<\/th>\n      <th>DATE_UTC<\/th>\n      <th>PUBLISHER_ID<\/th>\n      <th>DEVICE_TYPE<\/th>\n      <th>DEVICE_GEO_CITY<\/th>\n      <th>DEVICE_GEO_ZIP<\/th>\n      <th>PRICE<\/th>\n      <th>REQUESTED_SIZES<\/th>\n      <th>SIZE<\/th>\n      <th>RESPONSE_TIME<\/th>\n      <th>BID_WON<\/th>\n      <th>DEVICE_GEO_LAT<\/th>\n      <th>DEVICE_GEO_LONG<\/th>\n      <th>DEVICE_GEO_REGION<\/th>\n      <th>row_id<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"scrollY":"300px","pageLength":5,"columnDefs":[{"className":"dt-right","targets":[5,13,14,16]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"AUCTION_ID","targets":1},{"name":"TIMESTAMP","targets":2},{"name":"DATE_UTC","targets":3},{"name":"PUBLISHER_ID","targets":4},{"name":"DEVICE_TYPE","targets":5},{"name":"DEVICE_GEO_CITY","targets":6},{"name":"DEVICE_GEO_ZIP","targets":7},{"name":"PRICE","targets":8},{"name":"REQUESTED_SIZES","targets":9},{"name":"SIZE","targets":10},{"name":"RESPONSE_TIME","targets":11},{"name":"BID_WON","targets":12},{"name":"DEVICE_GEO_LAT","targets":13},{"name":"DEVICE_GEO_LONG","targets":14},{"name":"DEVICE_GEO_REGION","targets":15},{"name":"row_id","targets":16}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100],"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[1]; $(this.api().cell(row, 1).node()).css({'color':'black','background-color':'white'});\nvar value=data[2]; $(this.api().cell(row, 2).node()).css({'color':'black','background-color':'white'});\nvar value=data[3]; $(this.api().cell(row, 3).node()).css({'color':'black','background-color':'white'});\nvar value=data[4]; $(this.api().cell(row, 4).node()).css({'color':'black','background-color':'white'});\nvar value=data[5]; $(this.api().cell(row, 5).node()).css({'color':'black','background-color':'white'});\nvar value=data[6]; $(this.api().cell(row, 6).node()).css({'color':'black','background-color':'white'});\nvar value=data[7]; $(this.api().cell(row, 7).node()).css({'color':'black','background-color':'white'});\nvar value=data[8]; $(this.api().cell(row, 8).node()).css({'color':'black','background-color':'white'});\nvar value=data[9]; $(this.api().cell(row, 9).node()).css({'color':'black','background-color':'white'});\nvar value=data[10]; $(this.api().cell(row, 10).node()).css({'color':'black','background-color':'white'});\nvar value=data[11]; $(this.api().cell(row, 11).node()).css({'color':'black','background-color':'white'});\nvar value=data[12]; $(this.api().cell(row, 12).node()).css({'color':'black','background-color':'white'});\nvar value=data[13]; $(this.api().cell(row, 13).node()).css({'color':'black','background-color':'white'});\nvar value=data[14]; $(this.api().cell(row, 14).node()).css({'color':'black','background-color':'white'});\nvar value=data[15]; $(this.api().cell(row, 15).node()).css({'color':'black','background-color':'white'});\nvar value=data[16]; $(this.api().cell(row, 16).node()).css({'color':'black','background-color':'white'});\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-022446ed5f2f21fe2bf5" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-022446ed5f2f21fe2bf5">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5"],["0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb","0000060c-b8a9-414b-aeae-5f841472d6bb"],["2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37","2025-10-21 23:42:37"],["2025-10-21","2025-10-21","2025-10-21","2025-10-21","2025-10-21"],["LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5","LteIcOiSsaE5"],[4,4,4,4,4],["Salem","Salem","Salem","Salem","Salem"],["97302","97302","97302","97302","97302"],["0.04","0.06728","0.23","0.044751","0.007678"],["[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]","[\n  \"320x50\",\n  \"300x50\"\n]"],["320x50","320x50","320x50","320x50","320x50"],["RESPONSE_TIME: 259","RESPONSE_TIME: 86","RESPONSE_TIME: 80","RESPONSE_TIME: 259","RESPONSE_TIME: 461"],["FALSE","FALSE","TRUE","FALSE","FALSE"],[44.9036,44.9036,44.9036,44.9036,44.9036],[-123.0461,-123.0461,-123.0461,-123.0461,-123.0461],["OR","OR","OR","OR","OR"],[1,2,3,4,5]],"container":"<table class=\"compact stripe\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>AUCTION_ID<\/th>\n      <th>TIMESTAMP<\/th>\n      <th>DATE_UTC<\/th>\n      <th>PUBLISHER_ID<\/th>\n      <th>DEVICE_TYPE<\/th>\n      <th>DEVICE_GEO_CITY<\/th>\n      <th>DEVICE_GEO_ZIP<\/th>\n      <th>PRICE<\/th>\n      <th>REQUESTED_SIZES<\/th>\n      <th>SIZE<\/th>\n      <th>RESPONSE_TIME<\/th>\n      <th>BID_WON<\/th>\n      <th>DEVICE_GEO_LAT<\/th>\n      <th>DEVICE_GEO_LONG<\/th>\n      <th>DEVICE_GEO_REGION<\/th>\n      <th>row_id<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"scrollY":"300px","pageLength":5,"columnDefs":[{"className":"dt-right","targets":[5,13,14,16]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"AUCTION_ID","targets":1},{"name":"TIMESTAMP","targets":2},{"name":"DATE_UTC","targets":3},{"name":"PUBLISHER_ID","targets":4},{"name":"DEVICE_TYPE","targets":5},{"name":"DEVICE_GEO_CITY","targets":6},{"name":"DEVICE_GEO_ZIP","targets":7},{"name":"PRICE","targets":8},{"name":"REQUESTED_SIZES","targets":9},{"name":"SIZE","targets":10},{"name":"RESPONSE_TIME","targets":11},{"name":"BID_WON","targets":12},{"name":"DEVICE_GEO_LAT","targets":13},{"name":"DEVICE_GEO_LONG","targets":14},{"name":"DEVICE_GEO_REGION","targets":15},{"name":"row_id","targets":16}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100],"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[1]; $(this.api().cell(row, 1).node()).css({'color':'black','background-color':'white'});\nvar value=data[2]; $(this.api().cell(row, 2).node()).css({'color':'black','background-color':'white'});\nvar value=data[3]; $(this.api().cell(row, 3).node()).css({'color':'black','background-color':'white'});\nvar value=data[4]; $(this.api().cell(row, 4).node()).css({'color':'black','background-color':'white'});\nvar value=data[5]; $(this.api().cell(row, 5).node()).css({'color':'black','background-color':'white'});\nvar value=data[6]; $(this.api().cell(row, 6).node()).css({'color':'black','background-color':'white'});\nvar value=data[7]; $(this.api().cell(row, 7).node()).css({'color':'black','background-color':'white'});\nvar value=data[8]; $(this.api().cell(row, 8).node()).css({'color':'black','background-color':'white'});\nvar value=data[9]; $(this.api().cell(row, 9).node()).css({'color':'black','background-color':'white'});\nvar value=data[10]; $(this.api().cell(row, 10).node()).css({'color':'black','background-color':'white'});\nvar value=data[11]; $(this.api().cell(row, 11).node()).css({'color':'black','background-color':'white'});\nvar value=data[12]; $(this.api().cell(row, 12).node()).css({'color':'black','background-color':'white'});\nvar value=data[13]; $(this.api().cell(row, 13).node()).css({'color':'black','background-color':'white'});\nvar value=data[14]; $(this.api().cell(row, 14).node()).css({'color':'black','background-color':'white'});\nvar value=data[15]; $(this.api().cell(row, 15).node()).css({'color':'black','background-color':'white'});\nvar value=data[16]; $(this.api().cell(row, 16).node()).css({'color':'black','background-color':'white'});\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
 <pre class="r"><code># ==============================================================================
 # TYPE CONVERSION HELPERS
 # ==============================================================================
@@ -4385,16 +4386,16 @@ print(sampled_data)</code></pre>
 <pre><code>## # A tibble: 10 × 1
 ##    RESPONSE_TIME     
 ##    &lt;chr&gt;             
-##  1 RESPONSE_TIME: 206
-##  2 RESPONSE_TIME: 234
-##  3 RESPONSE_TIME: 409
-##  4 RESPONSE_TIME: 81 
-##  5 RESPONSE_TIME: 156
-##  6 RESPONSE_TIME: 178
-##  7 RESPONSE_TIME: 358
-##  8 RESPONSE_TIME: 191
-##  9 RESPONSE_TIME: 496
-## 10 RESPONSE_TIME: 162</code></pre>
+##  1 RESPONSE_TIME: 248
+##  2 RESPONSE_TIME: 123
+##  3 RESPONSE_TIME: 115
+##  4 RESPONSE_TIME: 100
+##  5 RESPONSE_TIME: 238
+##  6 RESPONSE_TIME: 135
+##  7 RESPONSE_TIME: 261
+##  8 RESPONSE_TIME: 98 
+##  9 RESPONSE_TIME: 222
+## 10 RESPONSE_TIME: 263</code></pre>
 <blockquote>
 <ol start="2" style="list-style-type: decimal">
 <li>Write a rule for how to:
@@ -4518,18 +4519,18 @@ n_to_sample &lt;- 10
 sampled_data &lt;- bids[sample(1:nrow(bids), n_to_sample, replace = FALSE), c(&quot;TIMESTAMP&quot;)]
 print(sampled_data)</code></pre>
 <pre><code>## # A tibble: 10 × 1
-##    TIMESTAMP         
-##    &lt;chr&gt;             
-##  1 2025-10-21 22:9:32
-##  2 2025-10-22 4:14:36
-##  3 2025-10-21 22:9:39
-##  4 2025-10-22 3:37:31
-##  5 2025-10-21 21:17:4
-##  6 2025-10-22 3:0:53 
-##  7 2025-10-22 4:10:40
-##  8 2025-10-22 4:14:11
-##  9 2025-10-21 23:1:22
-## 10 2025-10-22 0:44:23</code></pre>
+##    TIMESTAMP          
+##    &lt;chr&gt;              
+##  1 2025-10-22 2:54:15 
+##  2 2025-10-22 0:37:37 
+##  3 2025-10-22 1:31:20 
+##  4 2025-10-21 23:47:36
+##  5 2025-10-21 23:42:14
+##  6 2025-10-22 1:53:14 
+##  7 2025-10-22 0:0:45  
+##  8 2025-10-22 3:30:39 
+##  9 2025-10-21 22:1:59 
+## 10 2025-10-22 0:51:48</code></pre>
 <pre class="r"><code>num_hyphen_dates &lt;- sum(stringr::str_detect(bids$TIMESTAMP, &quot;-&quot;))
 cat(glue(&quot;Number of TIMESTAMP values containing &#39;-&#39;: {num_hyphen_dates}&quot;), &quot;\n&quot;)</code></pre>
 <pre><code>## Number of TIMESTAMP values containing &#39;-&#39;: 421614</code></pre>
@@ -4725,12 +4726,10 @@ minimum and maximum of <code>TIMESTAMP_clean</code>.</li>
 <pre class="r"><code># Your code here
 
 summary(bids$TIMESTAMP_clean)</code></pre>
-<pre><code>##                       Min.                    1st Qu. 
-## &quot;2025-10-21 20:49:05.0000&quot; &quot;2025-10-21 22:55:04.0000&quot; 
-##                     Median                       Mean 
-## &quot;2025-10-22 01:03:18.0000&quot; &quot;2025-10-22 00:53:02.4032&quot; 
-##                    3rd Qu.                       Max. 
-## &quot;2025-10-22 02:46:45.0000&quot; &quot;2025-10-22 04:32:59.0000&quot;</code></pre>
+<pre><code>##                  Min.               1st Qu.                Median 
+## &quot;2025-10-21 20:49:05&quot; &quot;2025-10-21 22:55:04&quot; &quot;2025-10-22 01:03:18&quot; 
+##                  Mean               3rd Qu.                  Max. 
+## &quot;2025-10-22 00:53:02&quot; &quot;2025-10-22 02:46:45&quot; &quot;2025-10-22 04:32:59&quot;</code></pre>
 <pre class="r"><code>cat(&quot;\n&quot;)</code></pre>
 <pre class="r"><code>range(bids$TIMESTAMP_clean)</code></pre>
 <pre><code>## [1] &quot;2025-10-21 20:49:05 UTC&quot; &quot;2025-10-22 04:32:59 UTC&quot;</code></pre>
@@ -5038,6 +5037,37 @@ treated as implausible for Oregon-only data and set to NA in the cleaned
 variables. This approach ensures that realistic Oregon locations are
 preserved while clearly incorrect coordinates are flagged.</p>
 </div>
+<div id="clear-bid_won-option" class="section level2" number="7.3">
+<h2><span class="header-section-number">7.3</span> Clear BID_WON
+(Option)</h2>
+<pre class="r"><code># Check current values first
+cat(&quot;Current values in BID_WON:\n&quot;)</code></pre>
+<pre><code>## Current values in BID_WON:</code></pre>
+<pre class="r"><code>print(table(bids$BID_WON, useNA = &quot;always&quot;))</code></pre>
+<pre><code>## 
+##  FALSE   true   TRUE   &lt;NA&gt; 
+## 323285     10 120674      0</code></pre>
+<pre class="r"><code># Fix the &quot;true&quot; values to &quot;TRUE&quot;
+bids &lt;- bids %&gt;%
+  mutate(
+    BID_WON_clean = case_when(
+      tolower(BID_WON) == &quot;true&quot; ~ &quot;TRUE&quot;,
+      tolower(BID_WON) == &quot;false&quot; ~ &quot;FALSE&quot;,
+      BID_WON == &quot;TRUE&quot; ~ &quot;TRUE&quot;,
+      BID_WON == &quot;FALSE&quot; ~ &quot;FALSE&quot;,
+      TRUE ~ NA_character_  # Set anything else to NA
+    )
+  )
+
+
+cat(&quot;\nCleaned BID_WON_clean:\n&quot;)</code></pre>
+<pre><code>## 
+## Cleaned BID_WON_clean:</code></pre>
+<pre class="r"><code>print(table(bids$BID_WON_clean, useNA = &quot;always&quot;))</code></pre>
+<pre><code>## 
+##  FALSE   TRUE   &lt;NA&gt; 
+## 323285 120684      0</code></pre>
+</div>
 </div>
 <div id="creating-a-final-cleaned-dataset-1015-minutes" class="section level1" number="8">
 <h1><span class="header-section-number">8</span> Creating a Final
@@ -5078,7 +5108,7 @@ bids_clean &lt;- bids_nodup %&gt;%
     TIMESTAMP_clean,
     DEVICE_GEO_LAT_clean,
     DEVICE_GEO_LONG_clean,
-    BID_WON,
+    BID_WON_clean,
     DEVICE_TYPE,
     SIZE
   )</code></pre>
@@ -5104,7 +5134,7 @@ glimpse(bids_clean)</code></pre>
 ## $ TIMESTAMP_clean         &lt;dttm&gt; 2025-10-21 23:42:37, 2025-10-21 23:42:37, 202…
 ## $ DEVICE_GEO_LAT_clean    &lt;dbl&gt; 44.9036, 44.9036, 44.9036, 44.9036, 44.9036, 4…
 ## $ DEVICE_GEO_LONG_clean   &lt;dbl&gt; -123.0461, -123.0461, -123.0461, -123.0461, -1…
-## $ BID_WON                 &lt;chr&gt; &quot;FALSE&quot;, &quot;FALSE&quot;, &quot;TRUE&quot;, &quot;FALSE&quot;, &quot;FALSE&quot;, &quot;F…
+## $ BID_WON_clean           &lt;chr&gt; &quot;FALSE&quot;, &quot;FALSE&quot;, &quot;TRUE&quot;, &quot;FALSE&quot;, &quot;FALSE&quot;, &quot;F…
 ## $ DEVICE_TYPE             &lt;int&gt; 4, 4, 4, 4, 4, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4…
 ## $ SIZE                    &lt;chr&gt; &quot;320x50&quot;, &quot;320x50&quot;, &quot;320x50&quot;, &quot;320x50&quot;, &quot;320x5…</code></pre>
 <blockquote>
@@ -5199,6 +5229,12 @@ range.</em></td>
 <td><em>Validity</em></td>
 <td><em>Filtered Longitudes from –125 to –116, set outliers to
 NA.</em></td>
+</tr>
+<tr class="even">
+<td>BID_WON(optional))</td>
+<td><em>Inconsistent word of TRUE</em></td>
+<td><em>Consistency</em></td>
+<td><em>Standardized all “true”“TRUE” to “TRUE”</em></td>
 </tr>
 </tbody>
 </table>
