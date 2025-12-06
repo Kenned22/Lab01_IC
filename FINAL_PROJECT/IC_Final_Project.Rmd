@@ -471,6 +471,29 @@ ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
 
 The boxplot highlights how bidding behavior varies widely across advertisers. Some advertisers place consistently low and tightly clustered bids, while others submit much higher bids with a broader spread. Several advertisers show long tails and many outliers, indicating occasional aggressive bidding. A few advertisers also stand out with significantly higher median bid values compared to the rest. Overall, the plot shows that bidding strategies differ substantially across advertisers, with some adopting conservative pricing and others frequently pushing toward the upper end of the bid range.
 
+## Publishers spatial price representation
+
+```{r}
+# Hexbin map showing spatial bid patterns by advertiser
+
+ggplot(bids_clean, aes(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean)) +
+  stat_summary_hex(aes(z = PRICE_final), fun = mean) +   # hexbin with mean price per hex
+  scale_fill_viridis_c(trans = "log",                    # color scale on log scale for contrast
+                       name = "Avg Bid Price (log scale)") +
+  coord_equal() +                                        # preserve geographic proportions
+  facet_wrap(~ PUBLISHER_ID) +                           # separate map panel per advertiser
+  labs(
+    title = "Spatial Patterns of Publisher Bid Prices Across Oregon",
+    x = "Longitude",
+    y = "Latitude"
+  )
+
+```
+
+### Plot summary
+
+The faceted map shows how public vary not only in the prices they bid but also in where those bids appear across Oregon. Some publishers have activity spread broadly throughout the state, while others are concentrated in just a few regions. Within each publisher’s panel, the color shading highlights differences in bid intensity: lighter areas represent higher average prices, while darker areas reflect lower prices. The patterns suggest that publishers target different geographic areas and may adjust their bidding strategies depending on where users are located. Thus the map reveals distinct spatial footprints for each publisher, with both bidding levels and geographic focus varying considerably from one publisher to another.
+
 
 
 ### **3. Auction Outcomes**
