@@ -389,7 +389,7 @@ Wednesday had the highest volume with 273,779 bids, but again we only have data 
 
 ### **2. Bid Behavior & Competitiveness**
 
-## How do bid amounts differ between winning and losing bids
+## Price difference between winning and losing bids
 
 ```{r}
 # Ridgeline plot of price distributions for won vs lost bids
@@ -449,6 +449,28 @@ ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)
 ### Figure summary 
 
 The violin–boxplot shows clear differences in how bid prices behave for winning and losing bids. Losing bids are mostly concentrated at very low prices, with only a few stretching upward. In contrast, winning bids tend to be higher overall, with a wider spread and a noticeably higher median. While there is still some overlap at the lower end, the shape of the distributions shows that higher bid prices are much more common among winning bids. Overall, the plot suggests that bidding slightly more greatly improves the odds of winning.
+
+## Advertisers bidding trends
+
+```{r}
+# Boxplot of price distribution across advertisers
+
+ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
+                       fill = factor(PUBLISHER_ID))) +
+  geom_boxplot(show.legend = FALSE) +     # boxplots for each advertiser
+  coord_flip() +                          # horizontal orientation for readability
+  labs(
+    title = "Bid Distributions by Advertiser",  
+    x = "Advertiser",                           
+    y = "Bid Amount"                            
+  )
+
+```
+
+### Figure summary 
+
+The boxplot highlights how bidding behavior varies widely across advertisers. Some advertisers place consistently low and tightly clustered bids, while others submit much higher bids with a broader spread. Several advertisers show long tails and many outliers, indicating occasional aggressive bidding. A few advertisers also stand out with significantly higher median bid values compared to the rest. Overall, the plot shows that bidding strategies differ substantially across advertisers, with some adopting conservative pricing and others frequently pushing toward the upper end of the bid range.
+
 
 
 ### **3. Auction Outcomes**
