@@ -389,6 +389,29 @@ Wednesday had the highest volume with 273,779 bids, but again we only have data 
 
 ### **2. Bid Behavior & Competitiveness**
 
+## How do bid amounts differ between winning and losing bids
+
+```{r}
+# ridgeline plotting
+
+ggplot(bids_clean, aes(y = BID_WON_clean, x = PRICE_final, fill = BID_WON_clean)) +
+  geom_density_ridges(alpha = 0.7, scale = 1.2) +
+  scale_fill_manual(
+    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
+    labels = c("Lost Bid", "Won Bid")
+  ) +
+  labs(
+    title = "Bid Price Distribution by Bid Outcome",
+    subtitle = "Ridgeline plot highlights distribution shapes and overlap",
+    x = "Bid Price",
+    y = "Bid Outcome"
+  ) +
+  scale_y_discrete(labels = c("FALSE" = "Lost Bids", "TRUE" = "Won Bids")) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"))
+
+
+```
 
 
 ### **3. Auction Outcomes**
