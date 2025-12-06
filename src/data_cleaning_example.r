@@ -6,7 +6,9 @@ library(sf)       # for spatial functions
 library(stringr)  # for string cleaning
 library(profvis)
 
-p <- profvis({
+# ---- Timing Start ----
+run_time <- system.time({
+
 #------------------------------------------------------
 # LOAD EXPECTED BIDS COLUMNS FROM CSV
 #------------------------------------------------------
@@ -146,6 +148,22 @@ joined <- st_join(
   join = st_within           # strict point-in-polygon
 )
 
+# Define sentinel ZIPs (invalid placeholders)
+sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+
+# --- Report original ZIP quality ---
+original_na <- sum(is.na(bids$DEVICE_GEO_ZIP))
+original_sentinels <- sum(bids$DEVICE_GEO_ZIP %in% sentinels, na.rm = TRUE)
+original_bad <- original_na + original_sentinels
+
+cat("\n")
+cat(strrep("-", 50), "\n")
+cat("ZIP CODE RECOVERY REPORT\n")
+cat(strrep("-", 50), "\n")
+cat(sprintf("  Original missing (NA): %d\n", original_na))
+cat(sprintf("  Original sentinels:    %d\n", original_sentinels))
+cat(sprintf("  Total bad ZIPs:        %d\n", original_bad))
+
 # Use ZCTA to fill missing ZIP codes
 bids$zipcode <- ifelse(
   is.na(bids$DEVICE_GEO_ZIP),   # if original ZIP is missing
@@ -153,10 +171,11 @@ bids$zipcode <- ifelse(
   bids$DEVICE_GEO_ZIP           # else keep original
 )
 
-# Create DEVICE_GEO_ZIP_clean
+# Report spatial join success
+spatial_matches <- sum(!is.na(joined$ZCTA5CE20))
+cat(sprintf("  Spatial join matches:  %d (points matched to ZCTA polygons)\n", spatial_matches))
 
-# Define sentinel ZIPs (invalid placeholders)
-sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+# Create DEVICE_GEO_ZIP_clean
 
 # Define pattern for valid U.S. 5-digit ZIP codes
 valid_zip_pattern <- "^[0-9]{5}$"
@@ -185,15 +204,31 @@ bids <- bids %>%
 bids <- bids %>%
   select(-starts_with("zipcode"))
 
+# --- Final ZIP quality report ---
+final_na <- sum(is.na(bids$DEVICE_GEO_ZIP_clean))
+recovered <- original_bad - final_na
+
+cat(sprintf("  Recovered ZIPs:        %d\n", recovered))
+cat(sprintf("  Remaining NA:          %d\n", final_na))
+cat(sprintf("  Recovery rate:         %.1f%%\n", recovered / original_bad * 100))
+cat(strrep("-", 50), "\n\n")
+
+
+})  # ---- Timing End ----
+
+cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']], 2)} seconds\n"))
+
 
 #------------------------------------------------------
 #
 #------------------------------------------------------
-})
 
-# View the profile (saves to HTML and opens in browser)
-htmlwidgets::saveWidget(p, "profile.html")
-browseURL("profile.html")
+
+# })
+
+# # View the profile (saves to HTML and opens in browser)
+# htmlwidgets::saveWidget(p, "profile.html")
+# browseURL("profile.html")
 
 # price_pipe <- function(df,
 #                        col_name,
