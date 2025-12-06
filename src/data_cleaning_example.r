@@ -48,173 +48,174 @@ print(bids_type_summary)
 # PRICE COLUMN: CONVERT TO NUMERIC
 # AND HANDLE IMPOSSIBLE VALUES
 #------------------------------------------------------
-bids <- convert_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
-bids <- bids %>%
-  mutate(PRICE_final = case_when(
-    .data[["PRICE_clean"]] <= 0 ~ NA_real_,
-    .data[["PRICE_clean"]] > 10 ~ NA_real_,
-    TRUE ~ .data[["PRICE_clean"]]
-  ))
+# bids <- convert_price_to_numeric(bids, "PRICE", output_col_name = "PRICE_clean", fix_leading_o = TRUE)
+# bids <- bids %>%
+#   mutate(PRICE_final = case_when(
+#     .data[["PRICE_clean"]] <= 0 ~ NA_real_,
+#     .data[["PRICE_clean"]] > 10 ~ NA_real_,
+#     TRUE ~ .data[["PRICE_clean"]]
+#   ))
+
+bids <- clean_price_column(bids, min_price = 0, max_price = 10, fix_leading_o = TRUE)
 
 #------------------------------------------------------
 # DEVICE_GEO_REGION COLUMN: STANDARDIZE OREGON CODES
 #------------------------------------------------------
-bids %>%
-  mutate(region_lower = stringr::str_to_lower(stringr::str_trim(DEVICE_GEO_REGION))) %>%
-  count(region_lower, sort = TRUE) %>%
-  filter(
-    str_detect(region_lower, "^or$")|
-    str_detect(region_lower, "oregon") |
-    str_detect(region_lower, "xor") |
-    str_detect(region_lower, "^or[^a-z]*$")
-  ) %>%
-  print()
+# bids %>%
+#   mutate(region_lower = stringr::str_to_lower(stringr::str_trim(DEVICE_GEO_REGION))) %>%
+#   count(region_lower, sort = TRUE) %>%
+#   filter(
+#     str_detect(region_lower, "^or$")|
+#     str_detect(region_lower, "oregon") |
+#     str_detect(region_lower, "xor") |
+#     str_detect(region_lower, "^or[^a-z]*$")
+#   ) %>%
+#   print()
 
-bids <- bids %>%
-  mutate(
-    DEVICE_GEO_REGION_clean = case_when(
-      str_to_lower(str_trim(DEVICE_GEO_REGION)) %in% c("or", "oregon", "xor") ~ "OR",
-      TRUE ~ NA_character_
-    )
-  )
+# bids <- bids %>%
+#   mutate(
+#     DEVICE_GEO_REGION_clean = case_when(
+#       str_to_lower(str_trim(DEVICE_GEO_REGION)) %in% c("or", "oregon", "xor") ~ "OR",
+#       TRUE ~ NA_character_
+#     )
+#   )
 
-print(glue::glue("Number of NA values in DEVICE_GEO_REGION_clean: {sum(is.na(bids$DEVICE_GEO_REGION_clean))}"))
+bids <- clean_geo_region_column(bids, verbose = TRUE)
+
+# print(glue::glue("Number of NA values in DEVICE_GEO_REGION_clean: {sum(is.na(bids$DEVICE_GEO_REGION_clean))}"))
 
 #------------------------------------------------------
 # DEVICE_GEO_ZIP COLUMN: CONVERT TO STRING AND
 # HANDLE SENTINEL VALUES
 #------------------------------------------------------
-# converting to string
-bids <- bids %>%
-  mutate(
-    DEVICE_GEO_ZIP = as.character(DEVICE_GEO_ZIP)
-  )
+# # converting to string
+# bids <- bids %>%
+#   mutate(
+#     DEVICE_GEO_ZIP = as.character(DEVICE_GEO_ZIP)
+#   )
 
-# Define sentinel ZIP codes
-sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+# # Define sentinel ZIP codes
+# sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
 
-# check for bids issues
-bids_suspicious <- bids %>%
-  filter(
-    is.na(DEVICE_GEO_ZIP) |                      # include NA ZIPs
-    nchar(DEVICE_GEO_ZIP) != 5 |                 # wrong length
-    !str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$") |  # contains non-digits
-    DEVICE_GEO_ZIP %in% sentinels                # sentinel codes
-  )
+# # check for bids issues
+# bids_suspicious <- bids %>%
+#   filter(
+#     is.na(DEVICE_GEO_ZIP) |                      # include NA ZIPs
+#     nchar(DEVICE_GEO_ZIP) != 5 |                 # wrong length
+#     !str_detect(DEVICE_GEO_ZIP, "^[0-9]{5}$") |  # contains non-digits
+#     DEVICE_GEO_ZIP %in% sentinels                # sentinel codes
+#   )
 
-bids_suspicious %>%
-  count(DEVICE_GEO_ZIP, sort = TRUE)
+# bids_suspicious %>%
+#   count(DEVICE_GEO_ZIP, sort = TRUE)
 
-# checking for zipcode pattern
-bids %>%
-  count(valid_oregon = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$"))
+# # checking for zipcode pattern
+# bids %>%
+#   count(valid_oregon = str_detect(DEVICE_GEO_ZIP, "^97[0-9]{3}$"))
 
+# options(tigris_use_cache = TRUE)
 
+# # Load Oregon-only ZCTA polygons (much faster for spatial join)
+# zips_oregon_path <- here("data", "zips_zcta_oregon.parquet")
 
+# if (file.exists(zips_oregon_path)) {
+#   cat("\n", "Loading Oregon ZCTA data from cached parquet...", "\n")
+#   zips <- sfarrow::st_read_parquet(zips_oregon_path)
+# } else {
+#   cat("\n", "Oregon cache not found. Loading full US ZCTAs and filtering...", "\n")
+#   # Download full US (state param doesn't work for 2020)
+#   zips_full <- zctas(year = 2020)
+#   # Filter to Oregon only (ZIPs starting with 97)
+#   zips <- zips_full %>% filter(str_starts(ZCTA5CE20, "97"))
+#   cat(glue("Filtered to {nrow(zips)} Oregon ZCTAs (from {nrow(zips_full)} US total)\n"))
+#   # Cache Oregon-only for future runs
+#   cat("Caching Oregon ZCTA data to parquet...\n")
+#   sfarrow::st_write_parquet(zips, zips_oregon_path)
+# }
 
-options(tigris_use_cache = TRUE)
+# # Convert bids → sf object using lat/long
+# df_sf <- st_as_sf(
+#   bids,
+#   coords = c("DEVICE_GEO_LONG", "DEVICE_GEO_LAT"),
+#   crs = 4326   # WGS84
+# )
 
-# Load Oregon-only ZCTA polygons (much faster for spatial join)
-zips_oregon_path <- here("data", "zips_zcta_oregon.parquet")
+# # Ensure ZCTAs use the same CRS as df_sf
+# zips <- st_transform(zips, st_crs(df_sf))
 
-if (file.exists(zips_oregon_path)) {
-  cat("Loading Oregon ZCTA data from cached parquet...\n")
-  zips <- sfarrow::st_read_parquet(zips_oregon_path)
-} else {
-  cat("Oregon cache not found. Loading full US ZCTAs and filtering...\n")
-  # Download full US (state param doesn't work for 2020)
-  zips_full <- zctas(year = 2020)
-  # Filter to Oregon only (ZIPs starting with 97)
-  zips <- zips_full %>% filter(str_starts(ZCTA5CE20, "97"))
-  cat(glue("Filtered to {nrow(zips)} Oregon ZCTAs (from {nrow(zips_full)} US total)\n"))
-  # Cache Oregon-only for future runs
-  cat("Caching Oregon ZCTA data to parquet...\n")
-  sfarrow::st_write_parquet(zips, zips_oregon_path)
-}
+# # map each point to the ZCTA polygon it falls in
+# joined <- st_join(
+#   df_sf,
+#   zips[, c("ZCTA5CE20")],
+#   join = st_within           # strict point-in-polygon
+# )
 
-# Convert bids → sf object using lat/long
-df_sf <- st_as_sf(
-  bids,
-  coords = c("DEVICE_GEO_LONG", "DEVICE_GEO_LAT"),
-  crs = 4326   # WGS84
-)
+# # Define sentinel ZIPs (invalid placeholders)
+# sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
 
-# Ensure ZCTAs use the same CRS as df_sf
-zips <- st_transform(zips, st_crs(df_sf))
+# # --- Report original ZIP quality ---
+# original_na <- sum(is.na(bids$DEVICE_GEO_ZIP))
+# original_sentinels <- sum(bids$DEVICE_GEO_ZIP %in% sentinels, na.rm = TRUE)
+# original_bad <- original_na + original_sentinels
 
-# map each point to the ZCTA polygon it falls in
-joined <- st_join(
-  df_sf,
-  zips[, c("ZCTA5CE20")],
-  join = st_within           # strict point-in-polygon
-)
+# cat("\n")
+# cat(strrep("-", 50), "\n")
+# cat("ZIP CODE RECOVERY REPORT\n")
+# cat(strrep("-", 50), "\n")
+# cat(sprintf("  Original missing (NA): %d\n", original_na))
+# cat(sprintf("  Original sentinels:    %d\n", original_sentinels))
+# cat(sprintf("  Total bad ZIPs:        %d\n", original_bad))
 
-# Define sentinel ZIPs (invalid placeholders)
-sentinels <- c("00000", "99999", "11111", "12345", "-999", "-99")
+# # Use ZCTA to fill missing ZIP codes
+# bids$zipcode <- ifelse(
+#   is.na(bids$DEVICE_GEO_ZIP),   # if original ZIP is missing
+#   joined$ZCTA5CE20,             # use mapped ZIP
+#   bids$DEVICE_GEO_ZIP           # else keep original
+# )
 
-# --- Report original ZIP quality ---
-original_na <- sum(is.na(bids$DEVICE_GEO_ZIP))
-original_sentinels <- sum(bids$DEVICE_GEO_ZIP %in% sentinels, na.rm = TRUE)
-original_bad <- original_na + original_sentinels
+# # Report spatial join success
+# spatial_matches <- sum(!is.na(joined$ZCTA5CE20))
+# cat(sprintf("  Spatial join matches:  %d (points matched to ZCTA polygons)\n", spatial_matches))
 
-cat("\n")
-cat(strrep("-", 50), "\n")
-cat("ZIP CODE RECOVERY REPORT\n")
-cat(strrep("-", 50), "\n")
-cat(sprintf("  Original missing (NA): %d\n", original_na))
-cat(sprintf("  Original sentinels:    %d\n", original_sentinels))
-cat(sprintf("  Total bad ZIPs:        %d\n", original_bad))
+# # Create DEVICE_GEO_ZIP_clean
 
-# Use ZCTA to fill missing ZIP codes
-bids$zipcode <- ifelse(
-  is.na(bids$DEVICE_GEO_ZIP),   # if original ZIP is missing
-  joined$ZCTA5CE20,             # use mapped ZIP
-  bids$DEVICE_GEO_ZIP           # else keep original
-)
+# # Define pattern for valid U.S. 5-digit ZIP codes
+# valid_zip_pattern <- "^[0-9]{5}$"
 
-# Report spatial join success
-spatial_matches <- sum(!is.na(joined$ZCTA5CE20))
-cat(sprintf("  Spatial join matches:  %d (points matched to ZCTA polygons)\n", spatial_matches))
+# bids <- bids %>%
+#   mutate(
+#     # Work with character format
+#     zipcode = as.character(zipcode),
 
-# Create DEVICE_GEO_ZIP_clean
+#     # Trim whitespace
+#     zipcode_trim = str_trim(zipcode),
 
-# Define pattern for valid U.S. 5-digit ZIP codes
-valid_zip_pattern <- "^[0-9]{5}$"
+#     # Replace sentinel codes with NA
+#     zipcode_no_sentinel = ifelse(zipcode_trim %in% sentinels,
+#                                  NA,
+#                                  zipcode_trim),
 
-bids <- bids %>%
-  mutate(
-    # Work with character format
-    zipcode = as.character(zipcode),
+#     # Enforce valid ZIP pattern (5 numeric digits)
+#     DEVICE_GEO_ZIP_clean = ifelse(
+#       str_detect(zipcode_no_sentinel, valid_zip_pattern),
+#       zipcode_no_sentinel,   # keep valid ZIP
+#       NA                     # invalid → NA
+#     )
+#   )
+# # drop unrequired columns
+# bids <- bids %>%
+#   select(-starts_with("zipcode"))
 
-    # Trim whitespace
-    zipcode_trim = str_trim(zipcode),
+# # --- Final ZIP quality report ---
+# final_na <- sum(is.na(bids$DEVICE_GEO_ZIP_clean))
+# recovered <- original_bad - final_na
 
-    # Replace sentinel codes with NA
-    zipcode_no_sentinel = ifelse(zipcode_trim %in% sentinels,
-                                 NA,
-                                 zipcode_trim),
+# cat(sprintf("  Recovered ZIPs:        %d\n", recovered))
+# cat(sprintf("  Remaining NA:          %d\n", final_na))
+# cat(sprintf("  Recovery rate:         %.1f%%\n", recovered / original_bad * 100))
+# cat(strrep("-", 50), "\n\n")
 
-    # Enforce valid ZIP pattern (5 numeric digits)
-    DEVICE_GEO_ZIP_clean = ifelse(
-      str_detect(zipcode_no_sentinel, valid_zip_pattern),
-      zipcode_no_sentinel,   # keep valid ZIP
-      NA                     # invalid → NA
-    )
-  )
-# drop unrequired columns
-bids <- bids %>%
-  select(-starts_with("zipcode"))
-
-# --- Final ZIP quality report ---
-final_na <- sum(is.na(bids$DEVICE_GEO_ZIP_clean))
-recovered <- original_bad - final_na
-
-cat(sprintf("  Recovered ZIPs:        %d\n", recovered))
-cat(sprintf("  Remaining NA:          %d\n", final_na))
-cat(sprintf("  Recovery rate:         %.1f%%\n", recovered / original_bad * 100))
-cat(strrep("-", 50), "\n\n")
-
-
+bids <- clean_zip_column(bids, verbose = TRUE)
 })  # ---- Timing End ----
 
 cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']], 2)} seconds\n"))
