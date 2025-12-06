@@ -216,72 +216,6 @@ find_duplicates <- function(df, exclude_cols = c("row_id")) {
   )
 }
 
-#' Comprehensive data quality assessment
-#'
-#' @param df A data frame to assess
-#' @param expected_types Optional data frame with expected column types
-#' @param time_checks Whether to time each check operation
-#' @return List containing all quality check results
-assess_data_quality <- function(df, expected_types = NULL, time_checks = TRUE) {
-  results <- list()
-
-  # Column validation
-  if (!is.null(expected_types)) {
-    if (time_checks) tic("Column Check")
-    results$missing_columns <- check_columns(df, expected_types$column)
-    if (time_checks) toc()
-
-    if (time_checks) tic("Type Check")
-    results$type_comparison <- check_column_types(df, expected_types)
-    if (time_checks) toc()
-  }
-
-  # Quality checks
-  if (time_checks) tic("NA Check")
-  results$na_check <- check_na(df)
-  if (time_checks) toc()
-
-  if (time_checks) tic("Blank Check")
-  results$blank_check <- check_blanks(df)
-  if (time_checks) toc()
-
-  if (time_checks) tic("Duplicate Check")
-  results$duplicate_check <- find_duplicates(df)
-  if (time_checks) toc()
-
-  class(results) <- "data_quality_report"
-  results
-}
-
-#' Print method for data quality reports
-#'
-#' @param x A data_quality_report object
-#' @param ... Additional arguments (unused)
-print.data_quality_report <- function(x, ...) {
-  cat("\n")
-  cat(strrep("=", 70), "\n")
-  cat("DATA QUALITY REPORT", "\n")
-  cat(strrep("=", 70), "\n\n")
-
-  if (!is.null(x$type_comparison)) {
-    cat("Type Mismatches:\n")
-    mismatches <- x$type_comparison %>% filter(!match)
-    if (nrow(mismatches) > 0) {
-      print(mismatches)
-    } else {
-      cat("  All types match expected types ✓\n")
-    }
-    cat("\n")
-  }
-
-  cat(glue("NA Values: {sum(x$na_check$na_by_column)} total across {sum(x$na_check$na_by_column > 0)} columns"), "\n")
-  cat(glue("Blank Values: {sum(x$blank_check$blanks_by_column)} total across {sum(x$blank_check$blanks_by_column > 0)} columns"), "\n")
-  cat(glue("Duplicate Rows: {x$duplicate_check$num_duplicates}"), "\n")
-
-  cat("\n")
-  cat(strrep("=", 70), "\n")
-}
-
 # ==============================================================================
 # TYPE CONVERSION HELPERS
 # ==============================================================================
@@ -1059,3 +993,74 @@ remove_duplicates <- function(df, exclude_cols = NULL, verbose = TRUE) {
     removed_indices = removed_rows
   )
 }
+
+
+# ==============================================================================
+# DATA QUALITY REPORTS
+# ==============================================================================
+
+# #' Comprehensive data quality assessment
+# #'
+# #' @param df A data frame to assess
+# #' @param expected_types Optional data frame with expected column types
+# #' @param time_checks Whether to time each check operation
+# #' @return List containing all quality check results
+# assess_data_quality <- function(df, expected_types = NULL, time_checks = TRUE) {
+#   results <- list()
+
+#   # Column validation
+#   if (!is.null(expected_types)) {
+#     if (time_checks) tic("Column Check")
+#     results$missing_columns <- check_columns(df, expected_types$column)
+#     if (time_checks) toc()
+
+#     if (time_checks) tic("Type Check")
+#     results$type_comparison <- check_column_types(df, expected_types)
+#     if (time_checks) toc()
+#   }
+
+#   # Quality checks
+#   if (time_checks) tic("NA Check")
+#   results$na_check <- check_na(df)
+#   if (time_checks) toc()
+
+#   if (time_checks) tic("Blank Check")
+#   results$blank_check <- check_blanks(df)
+#   if (time_checks) toc()
+
+#   if (time_checks) tic("Duplicate Check")
+#   results$duplicate_check <- find_duplicates(df)
+#   if (time_checks) toc()
+
+#   class(results) <- "data_quality_report"
+#   results
+# }
+
+# #' Print method for data quality reports
+# #'
+# #' @param x A data_quality_report object
+# #' @param ... Additional arguments (unused)
+# print.data_quality_report <- function(x, ...) {
+#   cat("\n")
+#   cat(strrep("=", 70), "\n")
+#   cat("DATA QUALITY REPORT", "\n")
+#   cat(strrep("=", 70), "\n\n")
+
+#   if (!is.null(x$type_comparison)) {
+#     cat("Type Mismatches:\n")
+#     mismatches <- x$type_comparison %>% filter(!match)
+#     if (nrow(mismatches) > 0) {
+#       print(mismatches)
+#     } else {
+#       cat("  All types match expected types ✓\n")
+#     }
+#     cat("\n")
+#   }
+
+#   cat(glue("NA Values: {sum(x$na_check$na_by_column)} total across {sum(x$na_check$na_by_column > 0)} columns"), "\n")
+#   cat(glue("Blank Values: {sum(x$blank_check$blanks_by_column)} total across {sum(x$blank_check$blanks_by_column > 0)} columns"), "\n")
+#   cat(glue("Duplicate Rows: {x$duplicate_check$num_duplicates}"), "\n")
+
+#   cat("\n")
+#   cat(strrep("=", 70), "\n")
+# }

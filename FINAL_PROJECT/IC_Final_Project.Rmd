@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 This markdown file will be the place where we can conduct our exploratory data analysis.
 
-Below you will find the questions that we are using to explore the data and who is 
+Below you will find the questions that we are using to explore the data and who is
 responsible for conducting the data analysis associated with that question.
 
 By the end of this process we will have as a team:
@@ -31,16 +31,16 @@ By the end of this process we will have as a team:
 2. All of the EDA questions examined with clear code & written explanations of the results.
 
 3. Data visualization for the various EDAs.
-    - One question to resolve is - is Lilly creating all the viz or should this be the responsibility 
+    - One question to resolve is - is Lilly creating all the viz or should this be the responsibility
       the people assigned the questions.
     - Either way we need one coherent theme across all viz to be imported into the presentation
-    
-4. A coherent final presentation (in a separate powerpoint created by Lilly), along with a clear 
+
+4. A coherent final presentation (in a separate powerpoint created by Lilly), along with a clear
    assignment of who is presenting what.
-   
+
 LINK TO SLIDES: https://docs.google.com/presentation/d/1Z7EedURd1mhE6WoUVpifnr4v6w-2GmTj2a6IKPiLOHg/edit?usp=sharing
-    
-*General notes: 
+
+*General notes:
 >Some example code for cleaning and data analysis will be pulled into the presentation,
 so make sure you are annotating code as you go so we can explain what each line does if needed.
 
@@ -87,6 +87,7 @@ errors if needed.
 
 ##Packages
 ```{r loadpackages}
+source(here("src", "data_cleaning.r"))  # Functions loaded at runtime - linter warnings are false positives
 
 library(tidyverse)
 library(arrow)
@@ -107,6 +108,9 @@ library(tigris)   # for zctas()
 library(sf)       # for spatial functions
 library(stringr)  # for string cleaning
 # source(here("src", "data_cleaning.r"))
+library(zipcodeR)
+library(arrow)
+
 
 #Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
 
@@ -122,13 +126,172 @@ with the functions we are using.
 #Since we cannot "save" the cleaned data in lab 03 please make sure to run this code "saveRDS(bids_clean, here::here("data", "bids_clean.rds"))" at line 1318 and make sure to NOT commit that change, then you can run this code
 
 
-bids_clean <- readRDS(here::here("data", "bids_clean.rds"))
+# bids_clean <- readRDS(here::here("data", "bids_clean.rds"))
+
+
+data_cleaning_pipeline <- function(df, expected_columns, zip_code_db = NULL, save_path = NULL, verbose = TRUE) {
+  df <- clean_price_column(df,
+                           min_price = 0,
+                           max_price = 10,
+                           fix_leading_o = TRUE,
+                           verbose = verbose)
+
+  df <- clean_geo_region_column(df,
+                                verbose = verbose)
+
+  df <- clean_zip_column(df,
+                         zip_code_db = zip_code_db,
+                         verbose = verbose)
+
+  df <- clean_response_time_column(df,
+                                   col_name = "RESPONSE_TIME",
+                                   output_col_name = "RESPONSE_TIME_clean",
+                                   extract_digits = TRUE,
+                                   verbose = verbose)
+
+  df <- clean_timestamp_column(df,
+                               col_name = "TIMESTAMP",
+                               verbose = verbose)
+
+  df <- clean_city_column(df,
+                          zip_code_db = zip_code_db,
+                          verbose = verbose)
+
+  df <- clean_geo_coordinates_column(df,
+                                     verbose = verbose)
+
+  df <- clean_bids_won_column(df,
+                              verbose = verbose)
+
+  df <- clean_date_column(df,
+                          col_name = "DATE_UTC",
+                          output_col_name = "DATE_UTC_clean",
+                          verbose = verbose)
+
+  df <- clean_device_type_column(df,
+                                 col_name = "DEVICE_TYPE",
+                                 output_col_name = "DEVICE_TYPE_clean",
+                                 verbose = verbose)
+
+  df <- clean_response_time_column(df,
+                                   col_name = "RESPONSE_TIME",
+                                   output_col_name = "RESPONSE_TIME_clean",
+                                   extract_digits = TRUE,
+                                   verbose = verbose)
+
+  df <- clean_requested_sizes_column(df,
+                                     col_name = "REQUESTED_SIZES",
+                                     output_col_name = "REQUESTED_SIZES_clean",
+                                     verbose = verbose)
+
+  duplicate_handler <- remove_duplicates(df,
+                                         exclude_cols = c("row_id"),
+                                         verbose = verbose)
+  df <- duplicate_handler[["df"]]
+  removed_indices <- duplicate_handler[["removed_indices"]]
+
+  if (!is.null(save_path)) {
+    write_parquet(df, save_path)
+  }
+
+  return(df)
+}
+
+
+# ---- Timing Start ----
+run_time <- system.time({
+
+#------------------------------------------------------
+# LOAD EXPECTED BIDS COLUMNS FROM CSV
+#------------------------------------------------------
+expected_columns <- data.frame(readr::read_csv(
+  here::here("data", "expected_columns.csv"),
+  col_types = "ccc"
+))
+
+#------------------------------------------------------
+# LOAD BIDS DATA FROM PARQUET
+#------------------------------------------------------
+cat("\n")
+cat(strrep("=", 70), "\n")
+cat("STARTING BIDS DATA PROCESSING\n")
+cat(strrep("=", 70), "\n\n")
+
+# Load data
+cat("Loading data...\n")
+original_bids <- read_parquet(here("data", "bids_data_vDTR.parquet"))
+bids <- original_bids %>% mutate(row_id = row_number())
+cat(glue("Loaded {nrow(original_bids)} rows and {ncol(original_bids)} columns\n\n"))
+
+#------------------------------------------------------
+# LOAD ZIPCODE DATA
+#------------------------------------------------------
+# Load ZIP → city lookup from zipcodeR
+zip_code_db <- load_oregon_zips()
+
+#------------------------------------------------------
+# CHECK FOR MISSING COLUMNS
+#------------------------------------------------------
+missing_columns <- check_columns(bids, expected_columns$column)
+cat(glue::glue("There are {length(missing_columns)} missing column(s): \n {paste(missing_columns, collapse = ', ')}"))
+
+#------------------------------------------------------
+# TYPE SUMMARY
+#------------------------------------------------------
+bids_type_summary <- check_column_types(bids, expected_columns)
+print(bids_type_summary)
+
+save_path <- NULL
+# save_path <- here("data", "bids_data_vDTR_clean.parquet")
+bids <- data_cleaning_pipeline(bids, expected_columns, zip_code_db, save_path, verbose = TRUE)
+
+cat("\n")
+cat(strrep("=", 70), "\n")
+cat("CREATING FINAL CLEANED DATASET\n")
+cat(strrep("=", 70), "\n\n")
+# Create final cleaned dataset
+bids_clean <- bids %>%
+  select(
+    row_id,
+    DATE_UTC_clean,
+    TIMESTAMP_clean,
+    AUCTION_ID,
+    PUBLISHER_ID,
+    PRICE_final,
+    DEVICE_GEO_REGION_clean,
+    DEVICE_GEO_ZIP_clean,
+    DEVICE_GEO_CITY_clean,
+    DEVICE_GEO_LAT_clean,
+    DEVICE_GEO_LONG_clean,
+    BID_WON_clean,
+    RESPONSE_TIME_clean,
+    DEVICE_TYPE_clean,
+    SIZE,
+    REQUESTED_SIZES_clean
+  )
+  # %>%
+  # rename_with(~ str_remove(., "(_clean|_final)$"))
+
+
+print(class(bids_clean))
+glimpse(bids_clean)
+# NA counts per column
+na_count_by_col <- colSums(is.na(bids_clean %>% select(-REQUESTED_SIZES_clean)))
+cat("\nNA Counts per Column:\n")
+cat(strrep("=", 70), "\n")
+print(na_count_by_col)
+total_na_rows <- sum(!complete.cases(bids_clean %>% select(-REQUESTED_SIZES_clean)))
+print(glue("Total NA rows: {total_na_rows}"))
+
+})  # ---- Timing End ----
+
+cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']], 2)} seconds\n"))
 
 
 ```
 
 
-#Run Exploratory Data Analysis 
+#Run Exploratory Data Analysis
 
 ### **1. Traffic & Volume Patterns**
 
@@ -140,7 +303,7 @@ bids_clean <- bids_clean %>%
   mutate(
     hour = hour(TIMESTAMP_clean),
     day_of_week = wday(TIMESTAMP_clean, label = TRUE, abbr = FALSE, week_start = 1),
- 
+
     day_of_week = factor(day_of_week,
                          levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
                          ordered = FALSE)
@@ -164,7 +327,7 @@ daily_volume <- bids_clean %>%
 
 # Plot: Bidding volume by hour
 ggplot(hourly_volume, aes(x = hour, y = n, fill = as.factor(hour))) +
-  geom_col(show.legend = FALSE) +  
+  geom_col(show.legend = FALSE) +
   scale_x_continuous(
     breaks = 0:23,
     labels = format(strptime(0:23, format = "%H"), format = "%I %p")
@@ -268,7 +431,7 @@ print(win_summary)
 ```
 ```{r}
 # 1.2 Distribution of winning bids vs losing bids
-ggplot(bids_clean %>% filter(!is.na(PRICE_final)), 
+ggplot(bids_clean %>% filter(!is.na(PRICE_final)),
        aes(x = PRICE_final, fill = BID_WON_clean)) +
   geom_density(alpha = 0.5) +
   scale_x_log10(labels = scales::dollar) +
@@ -359,7 +522,7 @@ summary(auction_analysis$price_diff)
 ```
 ```{r}
 # 2.2 Distribution of winning bid vs highest losing bid
-ggplot(auction_analysis %>% filter(is.finite(price_diff)), 
+ggplot(auction_analysis %>% filter(is.finite(price_diff)),
        aes(x = price_diff)) +
   geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
   scale_x_continuous(labels = scales::dollar) +
@@ -378,7 +541,7 @@ summary(auction_analysis$price_ratio)
 ```
 ```{r}
 # 2.4 Scatter plot of winning vs losing bids
-ggplot(auction_analysis %>% filter(is.finite(winning_bid) & is.finite(max_losing_bid)), 
+ggplot(auction_analysis %>% filter(is.finite(winning_bid) & is.finite(max_losing_bid)),
        aes(x = max_losing_bid, y = winning_bid)) +
   geom_point(alpha = 0.3, color = "steelblue") +
   geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
@@ -460,12 +623,12 @@ corrplot(cor_matrix, method = "color", type = "upper",
 ```{r}
 # 3.6 ANOVA tests for categorical variables
 # Test if win rates differ by device type
-anova_device <- aov(PRICE_final ~ DEVICE_TYPE, 
+anova_device <- aov(PRICE_final ~ DEVICE_TYPE,
                     data = bids_clean %>% filter(!is.na(PRICE_final)))
 summary(anova_device)
 
 # Test if win rates differ by ad size
-anova_size <- aov(PRICE_final ~ SIZE, 
+anova_size <- aov(PRICE_final ~ SIZE,
                   data = bids_clean %>% filter(!is.na(PRICE_final)))
 summary(anova_size)
 ```
@@ -492,24 +655,24 @@ cat("1. PREDICTIVE FEATURES OF WINNING BIDS:\n")
 cat("   - Higher bid prices are strongly associated with winning\n")
 cat("   - Response time patterns show...\n")
 cat("   - Time of day effects: Peak win rates occur at...\n")
-cat("   - Device type", levels(bids_clean$DEVICE_TYPE)[which.max(device_analysis$win_rate)], 
+cat("   - Device type", levels(bids_clean$DEVICE_TYPE)[which.max(device_analysis$win_rate)],
     "has the highest win rate\n")
-cat("   - Ad size", as.character(size_analysis$SIZE[which.max(size_analysis$win_rate)]), 
+cat("   - Ad size", as.character(size_analysis$SIZE[which.max(size_analysis$win_rate)]),
     "has the highest win rate\n\n")
 
 cat("2. CLEARING PRICE ANALYSIS:\n")
-cat("   - Average difference between winning and highest losing bid: $", 
+cat("   - Average difference between winning and highest losing bid: $",
     round(mean(auction_analysis$price_diff, na.rm = TRUE), 4), "\n")
-cat("   - Median price ratio (winning/highest losing):", 
+cat("   - Median price ratio (winning/highest losing):",
     round(median(auction_analysis$price_ratio, na.rm = TRUE), 2), "\n")
-cat("   - In", round(mean(auction_analysis$price_diff > 0, na.rm = TRUE) * 100, 1), 
+cat("   - In", round(mean(auction_analysis$price_diff > 0, na.rm = TRUE) * 100, 1),
     "% of auctions, winning bid > highest losing bid\n\n")
 
 cat("3. SYSTEMATIC DIFFERENCES:\n")
 cat("   - Device type differences:", paste(levels(bids_clean$DEVICE_TYPE), collapse = ", "), "\n")
-cat("   - Regional variations: Top 3 regions by win rate:", 
+cat("   - Regional variations: Top 3 regions by win rate:",
     paste(head(region_analysis$DEVICE_GEO_REGION_clean, 3), collapse = ", "), "\n")
-cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)), 
+cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)),
     "(", round(mean(is.na(bids_clean$PRICE_final)) * 100, 1), "% of data)\n")
 ```
 
@@ -529,7 +692,7 @@ cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)),
 
   >What were points of uncertainity? What steps did we take to address them and how could they still be showing     up?
   >How did we clean and prepare the data set for our work? What choices did we make and how did we standardize?
-  
+
 #Presentation Assignment:
 
 ##We will decide who is generating what info and transferring it to the slides.
@@ -609,4 +772,4 @@ Confirm your repo includes:
 • Kanban snapshot
 • Evidence of teamwork (commit history, pull requests, etc.)
 
-  
+
