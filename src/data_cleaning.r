@@ -160,20 +160,20 @@ check_blanks <- function(df) {
   )
 }
 
-#' #' Find duplicate rows
-#' #'
-#' #' @param df A data frame to check
-#' #' @param exclude_cols Column names to exclude from duplication check
-#' #' @return List with duplicate_indices and num_duplicates
-#' find_duplicates <- function(df, exclude_cols = c("row_id")) {
-#'   check_cols <- setdiff(names(df), exclude_cols)
-#'   duplicate_indices <- which(duplicated(df[, check_cols]))
+#' Find duplicate rows
 #'
-#'   list(
-#'     duplicate_indices = duplicate_indices,
-#'     num_duplicates = length(duplicate_indices)
-#'   )
-#' }
+#' @param df A data frame to check
+#' @param exclude_cols Column names to exclude from duplication check
+#' @return List with duplicate_indices and num_duplicates
+find_duplicates <- function(df, exclude_cols = c("row_id")) {
+  check_cols <- setdiff(names(df), exclude_cols)
+  duplicate_indices <- which(duplicated(df[, check_cols]))
+
+  list(
+    duplicate_indices = duplicate_indices,
+    num_duplicates = length(duplicate_indices)
+  )
+}
 
 #' Comprehensive data quality assessment
 #'
@@ -219,7 +219,7 @@ assess_data_quality <- function(df, expected_types = NULL, time_checks = TRUE) {
 print.data_quality_report <- function(x, ...) {
   cat("\n")
   cat(strrep("=", 70), "\n")
-  cat("DATA QUALITY REPORT\n")
+  cat("DATA QUALITY REPORT", "\n")
   cat(strrep("=", 70), "\n\n")
 
   if (!is.null(x$type_comparison)) {
@@ -233,9 +233,9 @@ print.data_quality_report <- function(x, ...) {
     cat("\n")
   }
 
-  cat(glue("NA Values: {sum(x$na_check$na_by_column)} total across {sum(x$na_check$na_by_column > 0)} columns\n"))
-  cat(glue("Blank Values: {sum(x$blank_check$blanks_by_column)} total across {sum(x$blank_check$blanks_by_column > 0)} columns\n"))
-  cat(glue("Duplicate Rows: {x$duplicate_check$num_duplicates}\n"))
+  cat(glue("NA Values: {sum(x$na_check$na_by_column)} total across {sum(x$na_check$na_by_column > 0)} columns"), "\n")
+  cat(glue("Blank Values: {sum(x$blank_check$blanks_by_column)} total across {sum(x$blank_check$blanks_by_column > 0)} columns"), "\n")
+  cat(glue("Duplicate Rows: {x$duplicate_check$num_duplicates}"), "\n")
 
   cat("\n")
   cat(strrep("=", 70), "\n")
@@ -316,7 +316,7 @@ convert_column <- function(df, col_name, target_type,
 
   if (verbose) {
     cat("\n", strrep("=", 60), "\n")
-    cat(glue("Converting {col_name} to {target_type} \n"))
+    cat(glue("Converting {col_name} to {target_type}"), "\n")
     cat(strrep("=", 60), "\n")
   }
 
@@ -327,7 +327,7 @@ convert_column <- function(df, col_name, target_type,
   # Check if already correct type
   if (checker(df[[col_name]])) {
     if (verbose) {
-      cat(glue("Column {col_name} is already {target_type}. No conversion needed.\n\n"))
+      cat(glue("Column {col_name} is already {target_type}. No conversion needed."), "\n\n")
     }
     return(df)
   }
@@ -345,21 +345,21 @@ convert_column <- function(df, col_name, target_type,
 
   # Perform conversion with error handling
   tryCatch({
-    if (verbose) cat(glue("Converting {col_name}...\n"))
+    if (verbose) cat(glue("Converting {col_name}..."), "\n")
     df[[output_col_name]] <- converter(df[[output_col_name]], ...)
 
     if (verbose) {
-      cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}\n\n"))
+      cat(glue("{output_col_name} is now: {class(df[[output_col_name]])[1]}"), "\n\n")
     }
   }, error = function(e) {
-    log_error(glue("Failed to convert {output_col_name}: {e$message}"))
-    stop(glue("Conversion failed for {output_col_name}: {e$message}"))
+    log_error(glue("Failed to convert {output_col_name}: {e$message}"), "\n")
+    stop(glue("Conversion failed for {output_col_name}: {e$message}"), "\n")
   })
 
 
   if (verbose) {
     num_NA = sum(is.na(df[[output_col_name]]))
-    cat(glue("NA COUNT: \n There are {num_NA} NAs in {output_col_name}.\n\n"))
+    cat(glue("NA COUNT: \n There are {num_NA} NAs in {output_col_name}"), "\n\n")
   }
 
 
@@ -382,7 +382,7 @@ convert_to_numeric <- function(df, col_name, output_col_name = NULL, fix_leading
     function(x) {
       problem_rows <- which(is.na(suppressWarnings(as.numeric(x))) & !is.na(x))
       if (verbose && length(problem_rows) > 0) {
-        cat(glue("Found {length(problem_rows)} non-numeric value(s), attempting to fix...\n"))
+        cat(glue("Found {length(problem_rows)} non-numeric value(s), attempting to fix..."), "\n")
       }
       gsub("^O", "0", x)
     }
@@ -479,7 +479,7 @@ convert_to_integer <- function(df, col_name,
                                verbose = TRUE) {
   preprocess <- if (extract_digits) {
     function(x) {
-      if (verbose) cat("Extracting digits from string...\n")
+      if (verbose) cat("Extracting digits from string...", "\n")
       gsub("[^0-9]", "", x)
     }
   } else {
@@ -518,22 +518,22 @@ convert_to_list <- function(df, col_name,
 
   if (is.list(df[[col_name]])) {
     if (verbose) {
-      cat(glue("Column {col_name} is already a list. No conversion needed.\n\n"))
+      cat(glue("Column {col_name} is already a list. No conversion needed."), "\n\n")
     }
     return(df)
   }
 
   if (verbose) {
     cat("\n", strrep("=", 60), "\n")
-    cat(glue("Converting {col_name} to list\n"))
+    cat(glue("Converting {col_name} to list"), "\n")
     cat(strrep("=", 60), "\n")
-    cat("Parsing JSON elements...\n")
+    cat("Parsing JSON elements...", "\n")
   }
 
   df[[col_name]] <- preprocess(df[[col_name]])
 
   if (verbose) {
-    cat(glue("{col_name} is now: list\n\n"))
+    cat(glue("{col_name} is now: list"), "\n\n")
   }
 
   df
@@ -554,8 +554,8 @@ remove_na_rows <- function(df, verbose = TRUE) {
   removed_rows <- original_rows - nrow(clean_df)
 
   if (verbose) {
-    cat(glue("Removed {removed_rows} rows with NA values.\n"))
-    cat(glue("Remaining rows: {nrow(clean_df)}\n"))
+    cat(glue("Removed {removed_rows} rows with NA values."), "\n")
+    cat(glue("Remaining rows: {nrow(clean_df)}"), "\n")
   }
 
   clean_df
@@ -581,9 +581,11 @@ remove_duplicates <- function(df, exclude_cols = NULL, verbose = TRUE) {
   removed_rows <- original_rows - nrow(clean_df)
 
   if (verbose) {
-    cat(glue("Removed {removed_rows} duplicate rows.\n"))
-    cat(glue("Remaining rows: {nrow(clean_df)}\n"))
+    cat(glue("Removed {removed_rows} duplicate rows."), "\n")
+    cat(glue("Remaining rows: {nrow(clean_df)}"), "\n")
   }
-
-  clean_df
+  list(
+    df = clean_df,
+    removed_indices = removed_rows
+  )
 }
