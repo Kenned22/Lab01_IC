@@ -28,6 +28,17 @@ options(tigris_use_cache = TRUE)
 # ==============================================================================
 # UTILITY FUNCTIONS
 # ==============================================================================
+#' Load Oregon ZCTA (ZIP Code Tabulation Area) spatial data
+#'
+#' Loads Oregon ZCTA polygons from a cached parquet file. If the cache doesn't
+#' exist, downloads full US ZCTAs from the Census Bureau via tigris, filters
+#' to Oregon (ZIPs starting with "97"), and caches the result for future use.
+#'
+#' @param zips_oregon_path Path to the Oregon ZCTA parquet cache file
+#'   (default: here("data", "zips_zcta_oregon.parquet"))
+#' @return An sf object containing Oregon ZCTA polygons with ZCTA5CE20 column
+#' @examples
+#' zips <- load_oregon_zips()
 load_oregon_zips <- function(zips_oregon_path = here("data", "zips_zcta_oregon.parquet")) {
   cat("\n", "Loading Oregon ZCTA data", "\n")
   if (file.exists(zips_oregon_path)) {
@@ -465,6 +476,23 @@ clean_price_column <- function(df, min_price = 0, max_price = 10,
 
 }
 
+
+#' Clean and standardize geographic region column
+#'
+#' Standardizes the DEVICE_GEO_REGION column by converting Oregon-related
+#' values (e.g., "or", "oregon", "xor") to a consistent "OR" format.
+#' Non-Oregon values are set to NA.
+#'
+#' @param df A data frame containing a DEVICE_GEO_REGION column
+#' @param codes_errors Character vector of regex patterns identifying Oregon variants
+#'   (default: c("^or$", "oregon", "xor", "^or[^a-z]*$"))
+#' @param output_col_name Name for the cleaned output column
+#'   (default: "DEVICE_GEO_REGION_clean")
+#' @param verbose Logical; if TRUE, prints cleaning summary statistics
+#'   (default: TRUE)
+#' @return Data frame with new DEVICE_GEO_REGION_clean column added
+#' @examples
+#' df_clean <- clean_geo_region_column(bids_df)
 clean_geo_region_column <- function(df,
                                     codes_errors = c("^or$", "oregon", "xor", "^or[^a-z]*$"),
                                     output_col_name = "DEVICE_GEO_REGION_clean",
@@ -504,8 +532,31 @@ clean_geo_region_column <- function(df,
   df
 }
 
+#' Clean and validate ZIP codes with spatial recovery
+#'
+#' Cleans the DEVICE_GEO_ZIP column by removing sentinel values and invalid
+#' formats. Uses spatial join with Oregon ZCTA polygons to recover missing
+#' ZIP codes from lat/long coordinates (DEVICE_GEO_LAT, DEVICE_GEO_LONG).
+#'
+#' @param df A data frame containing DEVICE_GEO_ZIP, DEVICE_GEO_LAT, and
+#'   DEVICE_GEO_LONG columns
+#' @param sentinels Character vector of sentinel ZIP codes to treat as missing
+#'   (default: c("00000", "99999", "11111", "12345", "-999", "-99"))
+#' @param zip_code_db Optional pre-loaded ZCTA spatial data; if NULL, loads
+#'   from zips_oregon_path
+#' @param zips_oregon_path Path to Oregon ZCTA parquet file
+#'   (default: here("data", "zips_zcta_oregon.parquet"))
+#' @param output_col_name Name for the cleaned output column
+#'   (default: "DEVICE_GEO_ZIP_clean")
+#' @param verbose Logical; if TRUE, prints ZIP code recovery report
+#'   (default: TRUE)
+#' @return Data frame with new DEVICE_GEO_ZIP_clean column containing valid
+#'   5-digit ZIP codes or NA
+#' @examples
+#' df_clean <- clean_zip_column(bids_df)
 clean_zip_column <- function(df,
                              sentinels = c("00000", "99999", "11111", "12345", "-999", "-99"),
+                             zip_code_db = NULL,
                              zips_oregon_path = here("data", "zips_zcta_oregon.parquet"),
                              output_col_name = "DEVICE_GEO_ZIP_clean",
                              verbose = TRUE) {
@@ -514,10 +565,14 @@ clean_zip_column <- function(df,
     cat(glue("Cleaning DEVICE_GEO_ZIP column"), "\n")
     cat(strrep("=", 60), "\n")
     cat(glue("Current values in DEVICE_GEO_ZIP:\n"))
-    print(head(table(df$DEVICE_GEO_ZIP, useNA = "always")))
+    # print(head(table(df$DEVICE_GEO_ZIP, useNA = "always")))
   }
 
-  zips <- load_oregon_zips(zips_oregon_path)
+  if (is.null(zip_code_db)) {
+    zips <- load_oregon_zips(zips_oregon_path)
+  } else {
+    zips <- zip_code_db
+  }
 
   # converting to string
   df <- df %>%
@@ -607,10 +662,88 @@ clean_zip_column <- function(df,
     cat(strrep("-", 50), "\n\n")
   }
 
+  df
+}
 
+#' Clean and recover missing city names using ZIP code lookup
+#'
+#' Creates a cleaned city column by copying existing DEVICE_GEO_CITY values
+#' and filling missing entries using the major_city field from a ZIP code
+#' database lookup on DEVICE_GEO_ZIP_clean.
+#'
+#' @param df A data frame containing DEVICE_GEO_CITY and DEVICE_GEO_ZIP_clean
+#'   columns (run clean_zip_column first)
+#' @param zip_code_db Optional pre-loaded ZIP code database with zipcode and
+#'   major_city columns; if NULL, loads from oregon_zip_path
+#' @param oregon_zip_path Path to Oregon ZIP code database parquet file
+#'   (default: here("data", "oregon_zip_code_db.parquet"))
+#' @param output_col_name Name for the cleaned output column
+#'   (default: "DEVICE_GEO_CITY_clean")
+#' @param verbose Logical; if TRUE, prints city recovery report and lists
+#'   unmatched ZIPs (default: TRUE)
+#' @return Data frame with new DEVICE_GEO_CITY_clean column added
+#' @note Requires clean_zip_column to be run first to create DEVICE_GEO_ZIP_clean
+#' @examples
+#' df_clean <- df %>%
+#'   clean_zip_column() %>%
+#'   clean_city_column()
+clean_city_column <- function(df,
+                              zip_code_db = NULL,
+                              oregon_zip_path = here("data", "oregon_zip_code_db.parquet"),
+                              output_col_name = "DEVICE_GEO_CITY_clean",
+                              verbose = TRUE) {
+  # Count missing before
+  city_missing_before <- sum(is.na(df$DEVICE_GEO_CITY))
+
+  # Get ZIP → city lookup from zipcodeR
+  if (is.null(zip_code_db)) {
+    zip_code_db <- load_oregon_zips(oregon_zip_path)
+  } else {
+    zip_code_db <- zip_code_db
+  }
+
+  zip_db <- zip_code_db %>%
+    select(.data$zipcode, .data$major_city)
+
+  # Join and fill missing cities where ZIP is available
+  df <- df %>%
+    mutate(DEVICE_GEO_CITY_clean = .data$DEVICE_GEO_CITY) %>%
+    left_join(zip_db, by = c("DEVICE_GEO_ZIP_clean" = "zipcode")) %>%
+    mutate(
+      DEVICE_GEO_CITY_clean = ifelse(
+        is.na(.data$DEVICE_GEO_CITY_clean) & !is.na(.data$major_city),
+        .data$major_city,
+        .data$DEVICE_GEO_CITY_clean
+      )
+    ) %>%
+    select(-.data$major_city)
+
+  # Report results
+  city_missing_after <- sum(is.na(df$DEVICE_GEO_CITY_clean))
+  city_recovered <- city_missing_before - city_missing_after
+
+  cat("\n")
+  cat(strrep("-", 50), "\n")
+  cat("CITY RECOVERY REPORT\n")
+  cat(strrep("-", 50), "\n")
+  cat(sprintf("  Original missing:  %d\n", city_missing_before))
+  cat(sprintf("  Recovered via ZIP: %d\n", city_recovered))
+  cat(sprintf("  Remaining NA:      %d\n", city_missing_after))
+  cat(strrep("-", 50), "\n")
+
+  # Check what ZIPs aren't matching (for debugging)
+  if (city_missing_after > 0) {
+    unmatched_zips <- df %>%
+      filter(!is.na(.data$DEVICE_GEO_ZIP_clean) & is.na(.data$  DEVICE_GEO_CITY_clean)) %>%
+      count(.data$DEVICE_GEO_ZIP_clean, sort = TRUE)
+    cat(sprintf("  Unmatched ZIPs: %d unique values\n", nrow(unmatched_zips)))
+    cat("  Top unmatched ZIPs:\n")
+    print(head(unmatched_zips, 10))
+  }
 
   df
 }
+
 
 #' Convert column to POSIXct timestamp
 #'
