@@ -392,26 +392,63 @@ Wednesday had the highest volume with 273,779 bids, but again we only have data 
 ## How do bid amounts differ between winning and losing bids
 
 ```{r}
-# ridgeline plotting
+# Ridgeline plot of price distributions for won vs lost bids
 
 ggplot(bids_clean, aes(y = BID_WON_clean, x = PRICE_final, fill = BID_WON_clean)) +
-  geom_density_ridges(alpha = 0.7, scale = 1.2) +
+  geom_density_ridges(alpha = 0.7, scale = 1.2) +      # ridge density curves
   scale_fill_manual(
-    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
-    labels = c("Lost Bid", "Won Bid")
+    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"), # custom colors
+    labels = c("Lost Bid", "Won Bid")                    # legend labels
   ) +
   labs(
-    title = "Bid Price Distribution by Bid Outcome",
+    title = "Bid Price Distribution by Bid Outcome",      # plot title
     subtitle = "Ridgeline plot highlights distribution shapes and overlap",
-    x = "Bid Price",
-    y = "Bid Outcome"
+    x = "Bid Price",                                      # x-axis label
+    y = "Bid Outcome"                                     # y-axis label
   ) +
   scale_y_discrete(labels = c("FALSE" = "Lost Bids", "TRUE" = "Won Bids")) +
-  theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(face = "bold"))
+  theme_minimal(base_size = 13) +                         # clean theme
+  theme(plot.title = element_text(face = "bold"))         # bold title
 
 
 ```
+
+### Figure summary
+
+The ridgeline plot gives a clear picture of how bid prices differ between winning and losing bids. Most losing bids are packed tightly at the lower end of the price range, while winning bids tend to extend into slightly higher prices. There is some overlap at very low bid amounts, but overall the curve for winning bids stretches farther to the right. This pattern suggests that higher bid prices generally improve the chances of winning.
+
+## Violin - Boxplot bid outcome representation
+
+```{r}
+# Violin + Boxplot comparing bid prices for wins vs losses
+
+ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +                 # violin shows price distribution shape
+  geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.9) +  # boxplot shows median + IQR
+  scale_fill_manual(
+    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),   # custom colors
+    labels = c("Lost Bid", "Won Bid"),                     # legend labels
+    name = "Bid Outcome"
+  ) +
+  labs(
+    title = "Distribution of Bid Prices by Bid Outcome",    # plot title
+    subtitle = "Violin + Boxplot highlight price differences",
+    x = "Bid Outcome",
+    y = "Bid Price"
+  ) +
+  scale_x_discrete(labels = c("FALSE" = "Lost Bids", "TRUE" = "Won Bids")) +
+  theme_minimal(base_size = 13) +                           # clean theme
+  theme(
+    plot.title = element_text(face = "bold", size = 15),    # bold title
+    strip.text = element_text(face = "bold"),
+    legend.position = "none"                                # hide legend (labels on x-axis)
+  )
+
+```
+
+### Figure summary 
+
+The violin–boxplot shows clear differences in how bid prices behave for winning and losing bids. Losing bids are mostly concentrated at very low prices, with only a few stretching upward. In contrast, winning bids tend to be higher overall, with a wider spread and a noticeably higher median. While there is still some overlap at the lower end, the shape of the distributions shows that higher bid prices are much more common among winning bids. Overall, the plot suggests that bidding slightly more greatly improves the odds of winning.
 
 
 ### **3. Auction Outcomes**
