@@ -87,7 +87,6 @@ errors if needed.
 
 ##Packages
 ```{r loadpackages}
-source(here("src", "data_cleaning.r"))  # Functions loaded at runtime - linter warnings are false positives
 
 library(tidyverse)
 library(arrow)
@@ -110,6 +109,8 @@ library(stringr)  # for string cleaning
 # source(here("src", "data_cleaning.r"))
 library(zipcodeR)
 library(arrow)
+
+source(here("src", "data_cleaning.r"))  # Functions loaded at runtime - linter warnings are false positives
 
 
 #Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
@@ -400,7 +401,7 @@ bids_clean <- bids_clean %>%
   mutate(
     BID_WON_clean = as.logical(BID_WON_clean),
     TIMESTAMP_clean = as.POSIXct(TIMESTAMP_clean),
-    DEVICE_TYPE = as.factor(DEVICE_TYPE),
+    DEVICE_TYPE = as.factor(DEVICE_TYPE_clean),
     SIZE = as.factor(SIZE)
   )
 
