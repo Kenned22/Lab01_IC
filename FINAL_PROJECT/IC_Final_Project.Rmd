@@ -110,6 +110,11 @@ library(stringr)  # for string cleaning
 # source(here("src", "data_cleaning.r"))
 library(zipcodeR)
 library(arrow)
+library(ggridges)   # ridge plots
+library(tigris)     # US geographic boundaries
+library(sf)         # spatial data handling
+library(viridis)    # colorblind-safe palettes(maps)
+library(mgcv)       # GAM/BAM modeling
 
 
 #Lilly imported these from Lab 3, please feel free to add any additional libraries we might need.
