@@ -538,6 +538,18 @@ summary(model)
 
 ```
 
+```{r}
+# Predict on test data
+test_data$pred_prob <- predict(model, newdata = test_data, type = "response")
+
+# Compute AUC
+roc_obj <- roc(test_data$BID_WON_clean, test_data$pred_prob)
+auc_value <- auc(roc_obj)
+
+print(auc_value)
+```
+
+
 
 
 
