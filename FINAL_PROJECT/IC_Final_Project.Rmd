@@ -544,7 +544,7 @@ The model shows a strong and clear relationship between how much an advertiser b
 
 The spatial smooth term (s(longitude, latitude)) is also significant, indicating that location matters as well—some geographic areas are naturally more competitive than others.
 
-The model explains about 31% of the deviance and has an adjusted R-squired of 0.349, which is reasonable for behavioral auction data. Overall, the results suggest that while bid amount is a major driver of winning probability, location-based competition also plays an important role.
+The model explains about 30% of the deviance and has an adjusted R-squired of 0.345, which is reasonable for behavioral auction data. Overall, the results suggest that while bid amount is a major driver of winning probability, location-based competition also plays an important role.
 
 ## Model prediction accuracy
 
@@ -562,7 +562,7 @@ print(auc_value)
 ## Trend to our predicted model 
 
 ```{r}
-# showing price in relation to probability of winning a bid 
+# showing price in relation to probability of win or loss a bid 
 
 ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
   geom_point(alpha = 0.1, color = "darkblue") +
@@ -575,6 +575,10 @@ ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
   theme_minimal(base_size = 13)
 
 ```
+
+### Figure summary 
+
+The figure shows how win probability changes with bid price. Win chances rise quickly at low prices, meaning small increases make a big difference. As prices move higher, the improvement slows, and eventually the probability levels off, suggesting that once a bid is competitive, raising the price further adds little benefit.
 
 ## spatial representation of win probability across cities
 
