@@ -451,7 +451,7 @@ ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)
 
 The violin–boxplot shows clear differences in how bid prices behave for winning and losing bids. Losing bids are mostly concentrated at very low prices, with only a few stretching upward. In contrast, winning bids tend to be higher overall, with a wider spread and a noticeably higher median. While there is still some overlap at the lower end, the shape of the distributions shows that higher bid prices are much more common among winning bids. Overall, the plot suggests that bidding slightly more greatly improves the odds of winning.
 
-## Advertisers bidding trends
+## Publishers bidding trends
 
 ```{r}
 # Boxplot of price distribution across advertisers
@@ -461,8 +461,8 @@ ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
   geom_boxplot(show.legend = FALSE) +     # boxplots for each advertiser
   coord_flip() +                          # horizontal orientation for readability
   labs(
-    title = "Bid Distributions by Advertiser",
-    x = "Advertiser",
+    title = "Bid Distributions by Publishers",
+    x = "Publisher",
     y = "Bid Amount"
   )
 
@@ -495,10 +495,10 @@ ggplot(bids_clean, aes(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean)) +
 
 The faceted map shows how public vary not only in the prices they bid but also in where those bids appear across Oregon. Some publishers have activity spread broadly throughout the state, while others are concentrated in just a few regions. Within each publisher’s panel, the color shading highlights differences in bid intensity: lighter areas represent higher average prices, while darker areas reflect lower prices. The patterns suggest that publishers target different geographic areas and may adjust their bidding strategies depending on where users are located. Thus the map reveals distinct spatial footprints for each publisher, with both bidding levels and geographic focus varying considerably from one publisher to another.
 
-## Cleaning NAs
+## Cleaning NAs for modeling
 
 ```{r}
-# Rebuild clean binary column from the original logical one
+# Clean binary column from the original character ones
 bids_clean$BID_WON_clean <- ifelse(bids_clean$BID_WON_clean == "TRUE", 1,
                                    ifelse(bids_clean$BID_WON_clean == "FALSE", 0, NA))
 
@@ -640,7 +640,7 @@ ggplot() +
   ) +
   coord_sf(expand = FALSE) +
   labs(
-    title = "Model-Predicted Win Probability Across Oregon Cities",
+    title = "Predicted Win Probability Across Oregon Cities",
     subtitle = "Spatial representation using Big Additive Model probability estimates",
     x = "Longitude",
     y = "Latitude"
@@ -1252,6 +1252,9 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 
 #
 
+```{r}
+
+```
 
 
 #Data Visualization
