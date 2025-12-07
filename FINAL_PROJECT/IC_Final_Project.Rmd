@@ -295,7 +295,6 @@ cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']
 
 ```
 
-
 #Run Exploratory Data Analysis
 
 ### **1. Traffic & Volume Patterns**
@@ -494,9 +493,29 @@ ggplot(bids_clean, aes(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean)) +
 
 The faceted map shows how public vary not only in the prices they bid but also in where those bids appear across Oregon. Some publishers have activity spread broadly throughout the state, while others are concentrated in just a few regions. Within each publisher’s panel, the color shading highlights differences in bid intensity: lighter areas represent higher average prices, while darker areas reflect lower prices. The patterns suggest that publishers target different geographic areas and may adjust their bidding strategies depending on where users are located. Thus the map reveals distinct spatial footprints for each publisher, with both bidding levels and geographic focus varying considerably from one publisher to another.
 
+## Cleaning NAs
+
+```{r}
+# Rebuild clean binary column from the original logical one
+bids_clean$BID_WON_clean <- ifelse(bids_clean$BID_WON_clean == "TRUE", 1,
+                                   ifelse(bids_clean$BID_WON_clean == "FALSE", 0, NA))
+
+# drop NAs
+bids_clean <- bids_clean %>%
+  filter(
+    !is.na(BID_WON_clean),
+    !is.na(PRICE_final),
+    !is.na(DEVICE_GEO_LONG_clean),
+    !is.na(DEVICE_GEO_LAT_clean)
+  )
+```
+
+
+
 
 
 ### **3. Auction Outcomes**
+
 ```{r}
 library(tidyverse)
 library(lubridate)
