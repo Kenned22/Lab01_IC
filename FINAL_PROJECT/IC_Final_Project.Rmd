@@ -451,7 +451,7 @@ ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)
 
 The violin–boxplot shows clear differences in how bid prices behave for winning and losing bids. Losing bids are mostly concentrated at very low prices, with only a few stretching upward. In contrast, winning bids tend to be higher overall, with a wider spread and a noticeably higher median. While there is still some overlap at the lower end, the shape of the distributions shows that higher bid prices are much more common among winning bids. Overall, the plot suggests that bidding slightly more greatly improves the odds of winning.
 
-## Advertisers bidding trends
+## Publishers bidding trends
 
 ```{r}
 # Boxplot of price distribution across advertisers
@@ -461,8 +461,8 @@ ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
   geom_boxplot(show.legend = FALSE) +     # boxplots for each advertiser
   coord_flip() +                          # horizontal orientation for readability
   labs(
-    title = "Bid Distributions by Advertiser",
-    x = "Advertiser",
+    title = "Bid Distributions by Publishers",
+    x = "Publisher",
     y = "Bid Amount"
   )
 
@@ -495,10 +495,10 @@ ggplot(bids_clean, aes(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean)) +
 
 The faceted map shows how public vary not only in the prices they bid but also in where those bids appear across Oregon. Some publishers have activity spread broadly throughout the state, while others are concentrated in just a few regions. Within each publisher’s panel, the color shading highlights differences in bid intensity: lighter areas represent higher average prices, while darker areas reflect lower prices. The patterns suggest that publishers target different geographic areas and may adjust their bidding strategies depending on where users are located. Thus the map reveals distinct spatial footprints for each publisher, with both bidding levels and geographic focus varying considerably from one publisher to another.
 
-## Cleaning NAs
+## Cleaning NAs for modeling
 
 ```{r}
-# Rebuild clean binary column from the original logical one
+# Clean binary column from the original character ones
 bids_clean$BID_WON_clean <- ifelse(bids_clean$BID_WON_clean == "TRUE", 1,
                                    ifelse(bids_clean$BID_WON_clean == "FALSE", 0, NA))
 
@@ -515,28 +515,30 @@ bids_clean <- bids_clean %>%
 ## predicting win probability from price and location
 
 ```{r}
-set.seed(123)   # for reproducibility
+set.seed(123)   # ensure the train/test split is reproducible
 
-# Create train (60%) and test (40%) indexes
+# Determine number of rows in the dataset
 n <- nrow(bids_clean)
+
+# Randomly select 60% of rows for training
 train_index <- sample(seq_len(n), size = 0.6 * n)
 
-# Split data
-train_data <- bids_clean[train_index, ]
-test_data  <- bids_clean[-train_index, ]
+# Split the dataset into training and testing sets
+train_data <- bids_clean[train_index, ]   # 60% training data
+test_data  <- bids_clean[-train_index, ]  # remaining 40% test data
 
-# Fit BAM model on training data
-
+# Fit a BAM model (fast GAM) to predict win probability
 model <- bam(
   BID_WON_clean ~
-    s(PRICE_final, k = 10) +
-    te(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean, k = c(8, 8)),
-  data = train_data,
-  family = binomial(),
-  discrete = TRUE
+    s(PRICE_final, k = 10) +                            # smooth effect of bid price
+    te(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean,     # 2D smooth for spatial effects
+       k = c(8, 8)),
+  data = train_data,                                     # training dataset
+  family = binomial(),                                   # binary outcome (win or lose)
+  discrete = TRUE                                        # speed optimization for big data
 )
 
-summary(model)
+summary(model)   # show model fit statistics and significance
 
 ```
 
@@ -640,7 +642,7 @@ ggplot() +
   ) +
   coord_sf(expand = FALSE) +
   labs(
-    title = "Model-Predicted Win Probability Across Oregon Cities",
+    title = "Predicted Win Probability Across Oregon Cities",
     subtitle = "Spatial representation using Big Additive Model probability estimates",
     x = "Longitude",
     y = "Latitude"
@@ -1250,6 +1252,9 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 
 #
 
+```{r}
+
+```
 
 
 #Data Visualization
