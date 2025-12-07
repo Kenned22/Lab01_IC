@@ -606,6 +606,12 @@ bids_pred_hex <- bids_clean %>%
     is.finite(DEVICE_GEO_LAT_clean),
     is.finite(pred_prob)
   )
+
+# Oregon state outline
+or_state <- states(cb = TRUE, year = 2023, class = "sf") %>%
+  filter(STUSPS == "OR") %>%
+  st_transform(4326)
+
 # Plot Model-Predicted Win Probability
 
 ggplot() +
