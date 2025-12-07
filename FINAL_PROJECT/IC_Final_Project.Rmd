@@ -70,7 +70,6 @@ errors if needed.
 >Bingtang is going to be working on this question
 
 * **Which features (e.g., bid amount, time of day, advertiser) are most predictive of a win?**
-* **How does the clearing price compare to the submitted bid amount across auctions?**
 * **Are there systematic differences in outcomes across devices, regions, or ad categories?**
 
 ---
@@ -295,6 +294,9 @@ print(glue("Total NA rows: {total_na_rows}"))
 cat(glue::glue("\n\nTotal runtime for data cleaning: {round(run_time[['elapsed']], 2)} seconds\n"))
 
 
+```
+```{r}
+glimpse(bids_clean)
 ```
 
 #Run Exploratory Data Analysis
@@ -672,290 +674,431 @@ The map shows how predicted win probabilities vary across Oregon. Higher probabi
 ### **3. Auction Outcomes**
 
 ```{r}
-library(tidyverse)
-library(lubridate)
-library(skimr)
-library(corrplot)
+#Library
+library(dplyr)
 library(ggplot2)
-library(scales)
+library(tidyr)
+library(corrplot)
+library(lubridate)
+library(forcats)
+library(gridExtra)
+library(ggrepel)
 
-# Convert necessary columns to appropriate types
-bids_clean <- bids_clean %>%
-  mutate(
-    BID_WON_clean = as.logical(BID_WON_clean),
-    TIMESTAMP_clean = as.POSIXct(TIMESTAMP_clean),
-    DEVICE_TYPE = as.factor(DEVICE_TYPE),
-    SIZE = as.factor(SIZE),
-    AUCTION_ID = as.factor(AUCTION_ID)
-  )
 
 ```
 
 #1. Which features are most predictive of a win?
 ```{r}
-# 1.1 Summary statistics for wins vs losses
-win_summary <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(BID_WON_clean) %>%
-  summarise(
-    count = n(),
-    avg_price = mean(PRICE_final, na.rm = TRUE),
-    median_price = median(PRICE_final, na.rm = TRUE),
-    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
-    median_response_time = median(RESPONSE_TIME_clean, na.rm = TRUE)
-  )
+cat("\n")
+cat(strrep("=", 70), "\n")
+cat("Q1. WHICH FEATURES ARE MOST PREDICTIVE OF A WIN?\n")
+cat(strrep("=", 70), "\n\n")
 
-print(win_summary)
-```
-```{r}
-# 1.2 Distribution of winning bids vs losing bids with custom colors
-ggplot(bids_clean %>% filter(!is.na(PRICE_final)),
-       aes(x = PRICE_final, fill = BID_WON_clean)) +
-  geom_density(alpha = 0.5) +
-  scale_x_log10(labels = scales::dollar) +
-  scale_fill_manual(
-    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
-    labels = c("FALSE" = "Lost", "TRUE" = "Won"),
-    name = "Bid Outcome"
-  ) +
-  labs(
-    title = "Distribution of Bid Prices by Win Status",
-    subtitle = "Logarithmic scale for better visualization",
-    x = "Bid Price (log scale)",
-    y = "Density"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, color = "gray50")
-  )
-```
-```{r}
-# 1.3 Response time analysis by win status with custom colors
-ggplot(bids_clean, aes(x = RESPONSE_TIME_clean, fill = BID_WON_clean)) +
-  geom_density(alpha = 0.5) +
-  scale_fill_manual(
-    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
-    labels = c("FALSE" = "Lost", "TRUE" = "Won"),
-    name = "Bid Outcome"
-  ) +
-  labs(
-    title = "Distribution of Response Times by Win Status",
-    x = "Response Time",
-    y = "Density"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-```
+# Convert BID_WON_clean to logical for analysis
+bids_clean <- bids_clean %>%
+  mutate(BID_WON_clean = as.logical(BID_WON_clean))
 
-```{r}
-# 1.4 Device type analysis
-device_analysis <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(DEVICE_TYPE) %>%
-  summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_bid_price = mean(PRICE_final),
-    .groups = "drop"
-  )
-
-print(device_analysis)
-```
-```{r}
-# 1.5 Ad size analysis
-size_analysis <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(SIZE) %>%
-  summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_bid_price = mean(PRICE_final),
-    .groups = "drop"
-  )
-
-print(size_analysis)
-```
-
-#2. How does the clearing price compare to the submitted bid amount?
-```{r}
-# 2.1 Create analysis for auctions with winning bids
-auction_analysis <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(AUCTION_ID) %>%
-  filter(any(BID_WON_clean == TRUE)) %>%
-  mutate(
-    winning_price = ifelse(BID_WON_clean == TRUE, PRICE_final, NA),
-    second_price = ifelse(!BID_WON_clean, PRICE_final, NA)
-  ) %>%
+# 1.1 Overall win rate
+win_rate <- bids_clean %>%
   summarise(
     total_bids = n(),
-    winning_bid = max(winning_price, na.rm = TRUE),
-    max_losing_bid = max(second_price, na.rm = TRUE),
-    price_diff = winning_bid - max_losing_bid,
-    .groups = "drop"
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE)
   )
 
-# Summary of price differences
-summary(auction_analysis$price_diff)
-```
-```{r}
-# 2.2 Distribution of winning bid vs highest losing bid
-ggplot(auction_analysis %>% filter(is.finite(price_diff)),
-       aes(x = price_diff)) +
-  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
-  scale_x_continuous(labels = scales::dollar) +
-  labs(title = "Distribution of Difference Between Winning and Highest Losing Bid",
-       x = "Price Difference",
-       y = "Count") +
-  theme_minimal()
-```
-```{r}
-# 2.3 Ratio analysis
-auction_analysis <- auction_analysis %>%
-  filter(is.finite(price_diff) & max_losing_bid > 0) %>%
-  mutate(price_ratio = winning_bid / max_losing_bid)
-
-summary(auction_analysis$price_ratio)
-```
-```{r}
-# 2.4 Scatter plot of winning vs losing bids
-ggplot(auction_analysis %>% filter(is.finite(winning_bid) & is.finite(max_losing_bid)),
-       aes(x = max_losing_bid, y = winning_bid)) +
-  geom_point(alpha = 0.3, color = "steelblue") +
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-  scale_x_continuous(labels = scales::dollar) +
-  scale_y_continuous(labels = scales::dollar) +
-  labs(title = "Winning Bid vs Highest Losing Bid",
-       x = "Highest Losing Bid",
-       y = "Winning Bid") +
-  theme_minimal()
+cat("Overall Win Rate:\n")
+print(win_rate)
+cat("\n")
 ```
 
-#3. Systematic differences across devices, regions, or ad categories
 ```{r}
-# 3.1 Device type analysis
-ggplot(device_analysis, aes(x = reorder(DEVICE_TYPE, -win_rate), y = win_rate)) +
-  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
-  labs(title = "Win Rate by Device Type",
-       x = "Device Type",
+# 1.2 Win rate by PRICE
+cat("Win Rate by Price Quartiles:\n")
+cat(strrep("-", 70), "\n")
+
+price_analysis <- bids_clean %>%
+  filter(!is.na(PRICE_final)) %>%
+  mutate(
+    price_quartile = ntile(PRICE_final, 4),
+    price_bucket = case_when(
+      PRICE_final < 0.01 ~ "< $0.01",
+      PRICE_final < 0.05 ~ "$0.01 - $0.05",
+      PRICE_final < 0.10 ~ "$0.05 - $0.10",
+      PRICE_final < 0.50 ~ "$0.10 - $0.50",
+      PRICE_final < 1.00 ~ "$0.50 - $1.00",
+      TRUE ~ "≥ $1.00"
+    )
+  ) %>%
+  group_by(price_bucket) %>%
+  summarise(
+    n_bids = n(),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE)
+  ) %>%
+  arrange(desc(win_rate))
+
+print(price_analysis)
+cat("\n")
+
+# Visualize win rate by price
+ggplot(price_analysis, aes(x = price_bucket, y = win_rate)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = sprintf("%.2f%%", win_rate * 100)), 
+            vjust = -0.5, size = 3) +
+  labs(title = "Win Rate by Bid Price Bucket",
+       x = "Bid Price Bucket ($)",
        y = "Win Rate") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
 ```{r}
-# 3.2 Regional analysis
-region_analysis <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(DEVICE_GEO_REGION_clean) %>%
-  summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_bid_price = mean(PRICE_final),
-    avg_response_time = mean(RESPONSE_TIME_clean),
-    .groups = "drop"
+# 1.3 Win rate by RESPONSE_TIME
+cat("\nWin Rate by Response Time:\n")
+cat(strrep("-", 70), "\n")
+
+response_time_analysis <- bids_clean %>%
+  filter(!is.na(RESPONSE_TIME_clean)) %>%
+  mutate(
+    response_time_bucket = case_when(
+      RESPONSE_TIME_clean < 50 ~ "< 50ms",
+      RESPONSE_TIME_clean < 100 ~ "50-100ms",
+      RESPONSE_TIME_clean < 200 ~ "100-200ms",
+      RESPONSE_TIME_clean < 500 ~ "200-500ms",
+      RESPONSE_TIME_clean < 1000 ~ "500-1000ms",
+      TRUE ~ "≥ 1000ms"
+    )
   ) %>%
-  filter(count > 100) %>%  # Filter for regions with sufficient data
+  group_by(response_time_bucket) %>%
+  summarise(
+    n_bids = n(),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE)
+  ) %>%
+  arrange(avg_response_time)
+
+print(response_time_analysis)
+cat("\n")
+
+```
+
+```{r}
+# 1.4 Win rate by DEVICE_TYPE
+cat("\nWin Rate by Device Type (Raw Codes):\n")
+cat(strrep("-", 70), "\n")
+
+device_analysis <- bids_clean %>%
+  filter(!is.na(DEVICE_TYPE_clean)) %>%
+  group_by(DEVICE_TYPE_clean) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    prop_of_bids = n() / nrow(bids_clean)
+  ) %>%
   arrange(desc(win_rate))
 
-print(region_analysis)
+print(device_analysis)
+cat("\n")
 ```
+
 ```{r}
-# 3.3 Ad size (SIZE) analysis
-ggplot(size_analysis, aes(x = reorder(SIZE, -win_rate), y = win_rate)) +
-  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
-  labs(title = "Win Rate by Ad Size",
-       x = "Ad Size",
-       y = "Win Rate") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r}
-# 3.4 Publisher analysis (top publishers)
-publisher_analysis <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(PUBLISHER_ID) %>%
+# 1.5 Win rate by GEO_REGION (using city as proxy since all are OR)
+cat("\nWin Rate by City (Top 10):\n")
+cat(strrep("-", 70), "\n")
+
+city_analysis <- bids_clean %>%
+  filter(!is.na(DEVICE_GEO_CITY_clean)) %>%
+  group_by(DEVICE_GEO_CITY_clean) %>%
   summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_bid_price = mean(PRICE_final),
-    .groups = "drop"
+    n_bids = n(),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_price = mean(PRICE_final, na.rm = TRUE)
   ) %>%
-  filter(count > 100) %>%
+  filter(n_bids >= 100) %>%  # Only consider cities with sufficient data
+  arrange(desc(win_rate)) %>%
+  head(10)
+
+print(city_analysis)
+cat("\n")
+```
+
+```{r}
+# 1.6 Win rate by TIME of DAY
+cat("\nWin Rate by Time of Day - CORRECTED ANALYSIS:\n")
+cat(strrep("=", 70), "\n\n")
+
+# First, let's see what hours we have in the data
+cat("Hour Distribution in TIMESTAMP_clean:\n")
+cat(strrep("-", 70), "\n")
+
+hour_distribution <- bids_clean %>%
+  mutate(hour = hour(TIMESTAMP_clean)) %>%
+  count(hour) %>%
+  arrange(hour)
+
+print(hour_distribution)
+cat("\n")
+
+# Now analyze win rates by hour
+cat("\nWin Rate by Hour of Day:\n")
+cat(strrep("-", 70), "\n")
+
+hourly_analysis <- bids_clean %>%
+  mutate(hour = hour(TIMESTAMP_clean)) %>%
+  group_by(hour) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE)
+  ) %>%
+  arrange(hour)
+
+print(hourly_analysis)
+cat("\n")
+```
+```{r}
+# Now analyze by day part 
+cat("\nWin Rate by Day Part (Corrected Grouping):\n")
+cat(strrep("-", 70), "\n")
+
+day_part_analysis <- bids_clean %>%
+  mutate(
+    hour = hour(TIMESTAMP_clean),
+    day_part = case_when(
+      hour >= 6 & hour < 12 ~ "Morning (6-12)",
+      hour >= 12 & hour < 18 ~ "Afternoon (12-18)",
+      hour >= 18 & hour < 24 ~ "Evening (18-24)",
+      hour >= 0 & hour < 6 ~ "Night (0-6)",
+      TRUE ~ "Unknown"
+    )
+  ) %>%
+  group_by(day_part) %>%  # Only group by day_part, not hour
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE)
+  ) %>%
+  arrange(factor(day_part, levels = c("Night (0-6)", "Morning (6-12)", 
+                                      "Afternoon (12-18)", "Evening (18-24)")))
+
+print(day_part_analysis)
+cat("\n")
+```
+
+```{r}
+# 1.7 Win rate by AD SIZE
+cat("\nWin Rate by Ad Size:\n")
+cat(strrep("-", 70), "\n")
+
+size_analysis <- bids_clean %>%
+  filter(!is.na(SIZE)) %>%
+  group_by(SIZE) %>%
+  summarise(
+    n_bids = n(),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE),
+    avg_price = mean(PRICE_final, na.rm = TRUE)
+  ) %>%
   arrange(desc(win_rate))
 
-head(publisher_analysis, 10)
+print(size_analysis)
+cat("\n")
 ```
-```{r}
-# 3.5 Correlation analysis for numerical variables
-numerical_vars <- bids_clean %>%
-  select(PRICE_final, RESPONSE_TIME_clean, DEVICE_GEO_LAT_clean, DEVICE_GEO_LONG_clean) %>%
-  filter(complete.cases(.))
 
-cor_matrix <- cor(numerical_vars)
-print(cor_matrix)
-
-# Visualize correlation matrix
-corrplot(cor_matrix, method = "color", type = "upper",
-         tl.col = "black", tl.srt = 45)
-```
 ```{r}
-# 3.6 ANOVA tests for categorical variables
-# Test if win rates differ by device type
-anova_device <- aov(PRICE_final ~ DEVICE_TYPE,
-                    data = bids_clean %>% filter(!is.na(PRICE_final)))
-summary(anova_device)
 
-# Test if win rates differ by ad size
-anova_size <- aov(PRICE_final ~ SIZE,
-                  data = bids_clean %>% filter(!is.na(PRICE_final)))
-summary(anova_size)
-```
-```{r}
-# 3.7 Missing values analysis for PRICE_final
-missing_analysis <- bids_clean %>%
-  mutate(has_price = !is.na(PRICE_final)) %>%
-  group_by(has_price) %>%
-  summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_response_time = mean(RESPONSE_TIME_clean),
-    device_type_mode = names(sort(table(DEVICE_TYPE), decreasing = TRUE))[1],
-    .groups = "drop"
+# 1.8 COMPREHENSIVE CORRELATION ANALYSIS FOR ALL FEATURES
+
+cat("\n")
+cat(strrep("=", 70), "\n")
+cat("COMPREHENSIVE CORRELATION ANALYSIS FOR ALL PREDICTORS\n")
+cat(strrep("=", 70), "\n\n")
+
+# 1. CONTINUOUS VARIABLES (Pearson correlation)
+cat("1. CONTINUOUS VARIABLES - PEARSON CORRELATION:\n")
+cat(strrep("-", 70), "\n")
+
+continuous_cor <- bids_clean %>%
+  mutate(
+    BID_WON_numeric = as.numeric(BID_WON_clean),
+    HOUR = hour(TIMESTAMP_clean)
+  ) %>%
+  select(BID_WON_numeric, PRICE_final, RESPONSE_TIME_clean, HOUR) %>%
+  cor(use = "complete.obs")
+
+print(round(continuous_cor, 4))
+cat("\n")
+
+# 2. CATEGORICAL VARIABLES - CHI-SQUARE TESTS
+cat("2. CATEGORICAL VARIABLES - CHI-SQUARE TESTS:\n")
+cat(strrep("-", 70), "\n")
+
+# Function to calculate Cramer's V (effect size for chi-square)
+cramers_v <- function(chi_result, n, k) {
+  sqrt(chi_result$statistic / (n * (min(k) - 1)))
+}
+
+# A. Device Type
+cat("A. DEVICE TYPE:\n")
+device_table <- table(bids_clean$DEVICE_TYPE_clean, bids_clean$BID_WON_clean)
+chi_device <- chisq.test(device_table)
+v_device <- cramers_v(chi_device, nrow(bids_clean), dim(device_table))
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+            chi_device$statistic, chi_device$parameter, chi_device$p.value))
+cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_device))
+cat("  Interpretation:", ifelse(v_device > 0.1, "Small effect", "Negligible effect"), "\n\n")
+
+# B. Top 10 Cities (for reliability)
+cat("B. GEOGRAPHY (Top 10 Cities by volume):\n")
+top_cities <- bids_clean %>%
+  count(DEVICE_GEO_CITY_clean) %>%
+  arrange(desc(n)) %>%
+  head(10) %>%
+  pull(DEVICE_GEO_CITY_clean)
+
+city_data <- bids_clean %>%
+  filter(DEVICE_GEO_CITY_clean %in% top_cities)
+
+city_table <- table(city_data$DEVICE_GEO_CITY_clean, city_data$BID_WON_clean)
+chi_city <- chisq.test(city_table)
+v_city <- cramers_v(chi_city, nrow(city_data), dim(city_table))
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+            chi_city$statistic, chi_city$parameter, chi_city$p.value))
+cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_city))
+cat("  Interpretation:", ifelse(v_city > 0.1, "Small effect", "Negligible effect"), "\n\n")
+
+# C. Common Ad Sizes
+cat("C. AD SIZE (Common sizes with n ≥ 1000):\n")
+common_sizes <- bids_clean %>%
+  count(SIZE) %>%
+  filter(n >= 1000) %>%
+  pull(SIZE)
+
+size_data <- bids_clean %>%
+  filter(SIZE %in% common_sizes)
+
+size_table <- table(size_data$SIZE, size_data$BID_WON_clean)
+chi_size <- chisq.test(size_table)
+v_size <- cramers_v(chi_size, nrow(size_data), dim(size_table))
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+            chi_size$statistic, chi_size$parameter, chi_size$p.value))
+cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_size))
+cat("  Interpretation:", ifelse(v_size > 0.1, "Small effect", "Negligible effect"), "\n\n")
+
+# 3. ORDINAL/INTERVAL VARIABLES
+cat("3. ORDINAL/INTERVAL VARIABLES:\n")
+cat(strrep("-", 70), "\n")
+
+# Day Part (ordinal)
+cat("A. DAY PART (Morning/Afternoon/Evening/Night):\n")
+day_part_data <- bids_clean %>%
+  mutate(
+    DAY_PART = factor(case_when(
+      hour(TIMESTAMP_clean) >= 6 & hour(TIMESTAMP_clean) < 12 ~ 1,
+      hour(TIMESTAMP_clean) >= 12 & hour(TIMESTAMP_clean) < 18 ~ 2,
+      hour(TIMESTAMP_clean) >= 18 & hour(TIMESTAMP_clean) < 24 ~ 3,
+      hour(TIMESTAMP_clean) >= 0 & hour(TIMESTAMP_clean) < 6 ~ 4
+    ), levels = 1:4, labels = c("Morning", "Afternoon", "Evening", "Night"))
+  ) %>%
+  filter(!is.na(DAY_PART))
+
+# Kruskal-Wallis test (non-parametric ANOVA)
+kruskal_day <- kruskal.test(as.numeric(BID_WON_clean) ~ DAY_PART, data = day_part_data)
+cat(sprintf("  Kruskal-Wallis H = %.2f, df = %d, p-value = %.6f\n", 
+            kruskal_day$statistic, kruskal_day$parameter, kruskal_day$p.value))
+
+# Eta squared for effect size
+eta_sq_day <- (kruskal_day$statistic - kruskal_day$parameter) / 
+  (nrow(day_part_data) - kruskal_day$parameter - 1)
+cat(sprintf("  Eta squared (effect size) = %.4f\n", eta_sq_day))
+cat("  Interpretation:", ifelse(eta_sq_day > 0.01, "Small effect", "Negligible effect"), "\n\n")
+
+# 4. COMPARISON TABLE
+cat("4. FEATURE IMPORTANCE COMPARISON TABLE:\n")
+cat(strrep("-", 70), "\n")
+
+importance_table <- data.frame(
+  Feature = c("Price", "Response Time", "Device Type", "Geography (City)", 
+              "Ad Size", "Time of Day (Hour)", "Day Part"),
+  Test = c("Pearson r", "Pearson r", "Cramer's V", "Cramer's V", 
+           "Cramer's V", "Point-biserial r", "Eta squared"),
+  Effect_Size = c(
+    continuous_cor[1, 2],  # Price
+    continuous_cor[1, 3],  # Response Time
+    v_device,              # Device Type
+    v_city,                # Geography
+    v_size,                # Ad Size
+    continuous_cor[1, 4],  # Hour
+    eta_sq_day             # Day Part
+  ),
+  P_Value = c(
+    cor.test(as.numeric(bids_clean$BID_WON_clean), bids_clean$PRICE_final)$p.value,
+    cor.test(as.numeric(bids_clean$BID_WON_clean), bids_clean$RESPONSE_TIME_clean)$p.value,
+    chi_device$p.value,
+    chi_city$p.value,
+    chi_size$p.value,
+    cor.test(as.numeric(bids_clean$BID_WON_clean), hour(bids_clean$TIMESTAMP_clean))$p.value,
+    kruskal_day$p.value
+  ),
+  Interpretation = c("", "", "", "", "", "", "")
+)
+
+# Add interpretation
+importance_table <- importance_table %>%
+  mutate(
+    Interpretation = case_when(
+      abs(Effect_Size) >= 0.5 ~ "VERY STRONG",
+      abs(Effect_Size) >= 0.3 ~ "STRONG",
+      abs(Effect_Size) >= 0.1 ~ "MODERATE",
+      abs(Effect_Size) >= 0.05 ~ "WEAK",
+      abs(Effect_Size) >= 0.01 ~ "VERY WEAK",
+      TRUE ~ "NEGLIGIBLE"
+    ),
+    P_Value_Sig = ifelse(P_Value < 0.001, "***",
+                        ifelse(P_Value < 0.01, "**",
+                              ifelse(P_Value < 0.05, "*", "ns")))
   )
 
-print(missing_analysis)
+print(importance_table %>% arrange(desc(abs(Effect_Size))))
+cat("\n")
+
+# 5. VISUALIZATION
+cat("5. VISUALIZING FEATURE IMPORTANCE:\n")
+cat(strrep("-", 70), "\n")
+
+# Effect size comparison plot
+ggplot(importance_table, aes(x = reorder(Feature, abs(Effect_Size)), 
+                            y = abs(Effect_Size), fill = Interpretation)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.3f%s", Effect_Size, P_Value_Sig)), 
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  scale_fill_brewer(palette = "RdYlGn", direction = -1) +
+  labs(title = "Feature Importance for Predicting Auction Wins",
+       subtitle = "Absolute effect sizes with significance levels (**p<0.01, *p<0.05, ns=not significant)",
+       x = "Feature",
+       y = "Effect Size (Absolute Value)",
+       fill = "Strength") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+cat("Visualization created.\n")
 ```
+conclusion Q1: Price is most Predictive of Win.
+
+
+
+#2. Systematic differences across devices, regions, or ad categories
 ```{r}
-#(not fix yet)
 
-# Create a summary report
-cat("=== EXPLORATORY DATA ANALYSIS SUMMARY ===\n\n")
-
-cat("1. PREDICTIVE FEATURES OF WINNING BIDS:\n")
-cat("   - Higher bid prices are strongly associated with winning\n")
-cat("   - Response time patterns show...\n")
-cat("   - Time of day effects: Peak win rates occur at...\n")
-cat("   - Device type", levels(bids_clean$DEVICE_TYPE)[which.max(device_analysis$win_rate)],
-    "has the highest win rate\n")
-cat("   - Ad size", as.character(size_analysis$SIZE[which.max(size_analysis$win_rate)]),
-    "has the highest win rate\n\n")
-
-cat("2. CLEARING PRICE ANALYSIS:\n")
-cat("   - Average difference between winning and highest losing bid: $",
-    round(mean(auction_analysis$price_diff, na.rm = TRUE), 4), "\n")
-cat("   - Median price ratio (winning/highest losing):",
-    round(median(auction_analysis$price_ratio, na.rm = TRUE), 2), "\n")
-cat("   - In", round(mean(auction_analysis$price_diff > 0, na.rm = TRUE) * 100, 1),
-    "% of auctions, winning bid > highest losing bid\n\n")
-
-cat("3. SYSTEMATIC DIFFERENCES:\n")
-cat("   - Device type differences:", paste(levels(bids_clean$DEVICE_TYPE), collapse = ", "), "\n")
-cat("   - Regional variations: Top 3 regions by win rate:",
-    paste(head(region_analysis$DEVICE_GEO_REGION_clean, 3), collapse = ", "), "\n")
-cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)),
-    "(", round(mean(is.na(bids_clean$PRICE_final)) * 100, 1), "% of data)\n")
 ```
 
 
