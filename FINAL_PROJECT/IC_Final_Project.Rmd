@@ -563,7 +563,78 @@ ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
 
 ```
 
+## spatial representation of win probability across cities
 
+
+```{r}
+# Predict win probability using your trained model
+
+bids_clean$pred_prob <- predict(
+  model,
+  newdata = bids_clean,
+  type = "response"
+)
+
+# Prepare data for hex plotting
+bids_pred_hex <- bids_clean %>%
+  mutate(
+    DEVICE_GEO_LONG_clean = as.numeric(DEVICE_GEO_LONG_clean),
+    DEVICE_GEO_LAT_clean  = as.numeric(DEVICE_GEO_LAT_clean)
+  ) %>%
+  filter(
+    is.finite(DEVICE_GEO_LONG_clean),
+    is.finite(DEVICE_GEO_LAT_clean),
+    is.finite(pred_prob)
+  )
+
+# Plot Model-Predicted Win Probability
+
+ggplot() +
+  # Oregon boundary
+  geom_sf(data = or_state, fill = "gray95", color = "gray50", linewidth = 0.4) +
+  
+  # Oregon counties
+  geom_sf(data = or_counties, fill = NA, color = "gray60", linewidth = 0.3) +
+  
+  # Predicted win-probability hex map
+  stat_summary_hex(
+    data = bids_pred_hex,
+    aes(
+      x = DEVICE_GEO_LONG_clean,
+      y = DEVICE_GEO_LAT_clean,
+      z = pred_prob
+    ),
+    fun  = mean,
+    bins = 50,
+    alpha = 0.85
+  ) +
+  
+  # Color scale for predictions
+  scale_fill_viridis_c(
+    option = "plasma",
+    name   = "Predicted\nWin Probability",
+    limits = c(0, 1)
+  ) +
+  
+  coord_sf(expand = FALSE) +
+  labs(
+    title = "Model-Predicted Win Probability Across Oregon Cities",
+    subtitle = "Spatial representation using GAM/BAM probability estimates",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", size = 15),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "right"
+  )
+
+# convert back to char
+bids_clean$BID_WON_clean <- ifelse(bids_clean$BID_WON_clean == 1, "TRUE", "FALSE")
+
+```
 
 
 
