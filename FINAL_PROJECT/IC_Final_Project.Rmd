@@ -546,7 +546,7 @@ The spatial smooth term (s(longitude, latitude)) is also significant, indicating
 
 The model explains about 30% of the deviance and has an adjusted R-squired of 0.345, which is reasonable for behavioral auction data. Overall, the results suggest that while bid amount is a major driver of winning probability, location-based competition also plays an important role.
 
-## Model prediction accuracy
+## Model dicrimination accuracy
 
 ```{r}
 # Predict on test data
@@ -558,6 +558,9 @@ auc_value <- auc(roc_obj)
 
 print(auc_value)
 ```
+### AUC Interpretation
+
+The AUC of 0.86 shows that our model is very effective at separating winning and losing bids, about 86% of the time, it assigns a higher win probability to an actual winner than to a loser. This indicates strong predictive power, meaning the model is reliable for estimating competitive bid prices, identifying locations where bids tend to perform better or worse, and predicting the likelihood of winning for new bids.
 
 ## Trend to our predicted model 
 
