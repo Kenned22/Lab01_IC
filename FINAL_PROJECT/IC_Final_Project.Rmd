@@ -1098,11 +1098,486 @@ conclusion Q1: Price is most Predictive of Win.
 
 #2. Systematic differences across devices, regions, or ad categories
 ```{r}
+cat("\n")
+cat(strrep("=", 70), "\n")
+cat(strrep("=", 70), "\n\n")
 
+# PART 1: DEVICE TYPE DIFFERENCES
+
+cat("1. DEVICE TYPE SYSTEMATIC DIFFERENCES\n")
+cat(strrep("=", 70), "\n\n")
+
+# 1.1 Comprehensive device analysis using raw DEVICE_TYPE_clean
+cat("1.1 Device Type Performance Metrics (Raw Codes):\n")
+cat(strrep("-", 70), "\n")
+
+device_comprehensive <- bids_clean %>%
+  filter(!is.na(DEVICE_TYPE_clean)) %>%
+  group_by(DEVICE_TYPE_clean) %>%
+  summarise(
+    n_bids = n(),
+    bid_share = n() / nrow(bids_clean) * 100,
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_bid_price = mean(PRICE_final, na.rm = TRUE),
+    median_bid_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    std_dev_price = sd(PRICE_final, na.rm = TRUE),
+    price_iqr = IQR(PRICE_final, na.rm = TRUE),
+    # Winning price metrics
+    avg_winning_price = mean(PRICE_final[BID_WON_clean], na.rm = TRUE),
+    avg_losing_price = mean(PRICE_final[!BID_WON_clean], na.rm = TRUE),
+    price_premium = avg_winning_price - avg_losing_price,
+    # Additional metrics
+    min_price = min(PRICE_final, na.rm = TRUE),
+    max_price = max(PRICE_final, na.rm = TRUE),
+    q25_price = quantile(PRICE_final, 0.25, na.rm = TRUE),
+    q75_price = quantile(PRICE_final, 0.75, na.rm = TRUE)
+  ) %>%
+  arrange(desc(win_rate))
+
+print(device_comprehensive)
+cat("\n")
+
+# 1.2 Device type statistical tests
+cat("1.2 Statistical Tests for Device Differences:\n")
+cat(strrep("-", 70), "\n")
+
+# Filter for device types with sufficient data
+device_types_sufficient <- device_comprehensive %>%
+  filter(n_bids >= 100) %>%
+  pull(DEVICE_TYPE_clean)
+
+device_test_data <- bids_clean %>%
+  filter(DEVICE_TYPE_clean %in% device_types_sufficient) %>%
+  mutate(DEVICE_TYPE_clean = factor(DEVICE_TYPE_clean))
+
+# ANOVA for price differences
+if (length(device_types_sufficient) >= 2) {
+  price_anova <- aov(PRICE_final ~ DEVICE_TYPE_clean, data = device_test_data)
+  cat("ANOVA - Price Differences by Device Type:\n")
+  print(summary(price_anova))
+  
+  # Post-hoc test if significant
+  if (summary(price_anova)[[1]]$`Pr(>F)`[1] < 0.05) {
+    cat("\nTukey HSD Post-hoc Test (Price):\n")
+    print(TukeyHSD(price_anova))
+  }
+}
+
+# Kruskal-Wallis test for win rate
+win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ DEVICE_TYPE_clean, 
+                           data = device_test_data)
+cat("\nKruskal-Wallis Test - Win Rate Differences by Device Type:\n")
+cat(sprintf("H = %.2f, p-value = %.6f\n", 
+            win_kruskal$statistic, win_kruskal$p.value))
+
+# Chi-square test for win distribution
+device_contingency <- table(device_test_data$DEVICE_TYPE_clean, 
+                           device_test_data$BID_WON_clean)
+chi_device <- chisq.test(device_contingency)
+cat("\nChi-square Test - Win Distribution by Device Type:\n")
+cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+            chi_device$statistic, chi_device$parameter, chi_device$p.value))
+cat("\n")
+
+# 1.3 Device type time patterns
+cat("1.3 Device Usage Patterns by Time of Day:\n")
+cat(strrep("-", 70), "\n")
+
+device_time_patterns <- bids_clean %>%
+  filter(DEVICE_TYPE_clean %in% device_types_sufficient) %>%
+  mutate(
+    hour = hour(TIMESTAMP_clean),
+    day_part = case_when(
+      hour >= 6 & hour < 12 ~ "Morning",
+      hour >= 12 & hour < 18 ~ "Afternoon",
+      hour >= 18 & hour < 24 ~ "Evening",
+      hour >= 0 & hour < 6 ~ "Night"
+    )
+  ) %>%
+  group_by(DEVICE_TYPE_clean, day_part) %>%
+  summarise(
+    n_bids = n(),
+    share_of_device = n() / sum(n()) * 100,
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    avg_response = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  pivot_wider(
+    names_from = day_part,
+    values_from = c(n_bids, share_of_device, win_rate, avg_price, avg_response)
+  )
+
+print(device_time_patterns)
+cat("\n")
+```
+
+
+```{r}
+# PART 2: REGIONAL DIFFERENCES (RAW DATA)
+
+cat("\n2. REGIONAL (GEOGRAPHIC) SYSTEMATIC DIFFERENCES\n")
+cat(strrep("=", 70), "\n\n")
+
+# 2.1 City-level comprehensive analysis using raw DEVICE_GEO_CITY_clean
+cat("2.1 Top 15 Cities by Bid Volume:\n")
+cat(strrep("-", 70), "\n")
+
+city_top15 <- bids_clean %>%
+  filter(!is.na(DEVICE_GEO_CITY_clean)) %>%
+  group_by(DEVICE_GEO_CITY_clean) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    mobile_pct = mean(DEVICE_TYPE_clean == "1", na.rm = TRUE) * 100,
+    desktop_pct = mean(DEVICE_TYPE_clean == "4", na.rm = TRUE) * 100,
+    device_2_pct = mean(DEVICE_TYPE_clean == "2", na.rm = TRUE) * 100,
+    # Price distribution metrics
+    price_sd = sd(PRICE_final, na.rm = TRUE),
+    price_min = min(PRICE_final, na.rm = TRUE),
+    price_max = max(PRICE_final, na.rm = TRUE),
+    price_q1 = quantile(PRICE_final, 0.25, na.rm = TRUE),
+    price_q3 = quantile(PRICE_final, 0.75, na.rm = TRUE),
+    price_iqr = price_q3 - price_q1,
+    # Winning metrics
+    winning_avg_price = mean(PRICE_final[BID_WON_clean], na.rm = TRUE),
+    losing_avg_price = mean(PRICE_final[!BID_WON_clean], na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  filter(n_bids >= 100) %>%
+  mutate(
+    price_cv = price_sd / avg_price * 100
+  ) %>%
+  arrange(desc(n_bids)) %>%
+  head(15)
+
+print(city_top15)
+cat("\n")
+
+# 2.2 Regional statistical tests
+cat("2.2 Statistical Tests for Regional Differences:\n")
+cat(strrep("-", 70), "\n")
+
+# Select top 5 cities for analysis
+top5_cities <- city_top15 %>%
+  head(5) %>%
+  pull(DEVICE_GEO_CITY_clean)
+
+regional_test_data <- bids_clean %>%
+  filter(DEVICE_GEO_CITY_clean %in% top5_cities) %>%
+  mutate(city = factor(DEVICE_GEO_CITY_clean))
+
+# ANOVA for price differences
+if (n_distinct(regional_test_data$city) >= 2) {
+  regional_price_anova <- aov(PRICE_final ~ city, data = regional_test_data)
+  cat("ANOVA - Price Differences by City:\n")
+  print(summary(regional_price_anova))
+  
+  if (summary(regional_price_anova)[[1]]$`Pr(>F)`[1] < 0.05) {
+    cat("\nTukey HSD Post-hoc Test (Regional Price Differences):\n")
+    print(TukeyHSD(regional_price_anova))
+  }
+}
+
+# Kruskal-Wallis for win rate differences
+regional_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ city, 
+                                    data = regional_test_data)
+cat("\nKruskal-Wallis Test - Win Rate Differences by City:\n")
+cat(sprintf("H = %.2f, p-value = %.6f\n", 
+            regional_win_kruskal$statistic, regional_win_kruskal$p.value))
+
+# Chi-square for win distribution
+regional_contingency <- table(regional_test_data$city, 
+                             regional_test_data$BID_WON_clean)
+chi_region <- chisq.test(regional_contingency)
+cat("\nChi-square Test - Win Distribution by City:\n")
+cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+            chi_region$statistic, chi_region$parameter, chi_region$p.value))
+cat("\n")
+
+# 2.3 City performance by device type
+cat("2.3 City Performance by Device Type:\n")
+cat(strrep("-", 70), "\n")
+
+city_device_performance <- bids_clean %>%
+  filter(DEVICE_GEO_CITY_clean %in% top5_cities &
+         DEVICE_TYPE_clean %in% device_types_sufficient) %>%
+  group_by(DEVICE_GEO_CITY_clean, DEVICE_TYPE_clean) %>%
+  summarise(
+    n_bids = n(),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    avg_response = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  pivot_wider(
+    names_from = DEVICE_TYPE_clean,
+    values_from = c(n_bids, win_rate, avg_price, avg_response),
+    names_sep = "_"
+  )
+
+print(city_device_performance)
+cat("\n")
+```
+
+
+```{r}
+# PART 3: AD SIZE DIFFERENCES (RAW DATA)
+
+cat("\n3. AD SIZE SYSTEMATIC DIFFERENCES\n")
+cat(strrep("=", 70), "\n\n")
+
+# 3.1 Ad size comprehensive analysis using raw SIZE
+cat("3.1 Top 20 Ad Sizes by Volume:\n")
+cat(strrep("-", 70), "\n")
+
+size_analysis <- bids_clean %>%
+  filter(!is.na(SIZE)) %>%
+  group_by(SIZE) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    price_sd = sd(PRICE_final, na.rm = TRUE),
+    # Device distribution
+    mobile_pct = mean(DEVICE_TYPE_clean == "1", na.rm = TRUE) * 100,
+    desktop_pct = mean(DEVICE_TYPE_clean == "4", na.rm = TRUE) * 100,
+    device_2_pct = mean(DEVICE_TYPE_clean == "2", na.rm = TRUE) * 100,
+    # Price range
+    min_price = min(PRICE_final, na.rm = TRUE),
+    max_price = max(PRICE_final, na.rm = TRUE),
+    q25_price = quantile(PRICE_final, 0.25, na.rm = TRUE),
+    q75_price = quantile(PRICE_final, 0.75, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  filter(n_bids >= 10) %>%
+  arrange(desc(n_bids)) %>%
+  head(20)
+
+print(size_analysis)
+cat("\n")
+
+# 3.2 Statistical tests for size differences
+cat("3.2 Statistical Tests for Size Differences:\n")
+cat(strrep("-", 70), "\n")
+
+# Test for common sizes (n >= 1000)
+common_sizes <- size_analysis %>%
+  filter(n_bids >= 1000) %>%
+  pull(SIZE)
+
+if (length(common_sizes) >= 2) {
+  size_test_data <- bids_clean %>%
+    filter(SIZE %in% common_sizes) %>%
+    mutate(SIZE = factor(SIZE))
+  
+  # ANOVA for price differences
+  size_price_anova <- aov(PRICE_final ~ SIZE, data = size_test_data)
+  cat("ANOVA - Price Differences by Ad Size:\n")
+  print(summary(size_price_anova))
+  
+  # Kruskal-Wallis for win rate
+  size_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ SIZE, 
+                                  data = size_test_data)
+  cat("\nKruskal-Wallis Test - Win Rate Differences by Ad Size:\n")
+  cat(sprintf("H = %.2f, p-value = %.6f\n", 
+              size_win_kruskal$statistic, size_win_kruskal$p.value))
+  
+  # Chi-square for win distribution
+  size_contingency <- table(size_test_data$SIZE, 
+                           size_test_data$BID_WON_clean)
+  chi_size <- chisq.test(size_contingency)
+  cat("\nChi-square Test - Win Distribution by Ad Size:\n")
+  cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+              chi_size$statistic, chi_size$parameter, chi_size$p.value))
+}
+cat("\n")
+
+# 3.3 Size performance by device type
+cat("3.3 Size Performance by Device Type (Common Sizes):\n")
+cat(strrep("-", 70), "\n")
+
+if (length(common_sizes) >= 1) {
+  size_device_performance <- bids_clean %>%
+    filter(SIZE %in% common_sizes[1:3] &  # Top 3 common sizes
+           DEVICE_TYPE_clean %in% device_types_sufficient) %>%
+    group_by(SIZE, DEVICE_TYPE_clean) %>%
+    summarise(
+      n_bids = n(),
+      win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+      avg_price = mean(PRICE_final, na.rm = TRUE),
+      avg_response = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+      .groups = 'drop'
+    ) %>%
+    pivot_wider(
+      names_from = DEVICE_TYPE_clean,
+      values_from = c(n_bids, win_rate, avg_price, avg_response),
+      names_sep = "_"
+    )
+  
+  print(size_device_performance)
+}
+cat("\n")
 ```
 
 
 
+
+
+```{r}
+# PART 5: TIME-BASED ANALYSIS
+
+cat("\n5. TIME-BASED SYSTEMATIC DIFFERENCES\n")
+cat(strrep("=", 70), "\n\n")
+
+# 5.1 Hour of day analysis
+cat("5.1 Hourly Analysis of Auction Performance:\n")
+cat(strrep("-", 70), "\n")
+
+hourly_analysis <- bids_clean %>%
+  mutate(hour = hour(TIMESTAMP_clean)) %>%
+  group_by(hour) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    mobile_pct = mean(DEVICE_TYPE_clean == "1", na.rm = TRUE) * 100,
+    desktop_pct = mean(DEVICE_TYPE_clean == "4", na.rm = TRUE) * 100,
+    .groups = 'drop'
+  ) %>%
+  arrange(hour)
+
+print(hourly_analysis)
+cat("\n")
+
+# 5.2 Day of week analysis
+cat("5.2 Day of Week Analysis:\n")
+cat(strrep("-", 70), "\n")
+
+weekday_analysis <- bids_clean %>%
+  mutate(
+    weekday = wday(DATE_UTC_clean, label = TRUE, abbr = FALSE),
+    weekday_num = wday(DATE_UTC_clean)
+  ) %>%
+  group_by(weekday, weekday_num) %>%
+  summarise(
+    n_bids = n(),
+    wins = sum(BID_WON_clean, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean, na.rm = TRUE) * 100,
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    avg_response = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  arrange(weekday_num)
+
+print(weekday_analysis %>% select(-weekday_num))
+cat("\n")
+
+# 5.3 Time-based statistical tests
+cat("5.3 Statistical Tests for Time Differences:\n")
+cat(strrep("-", 70), "\n")
+
+# Prepare data for time analysis
+time_data <- bids_clean %>%
+  mutate(
+    hour = hour(TIMESTAMP_clean),
+    day_part = case_when(
+      hour >= 6 & hour < 12 ~ "Morning",
+      hour >= 12 & hour < 18 ~ "Afternoon",
+      hour >= 18 & hour < 24 ~ "Evening",
+      hour >= 0 & hour < 6 ~ "Night"
+    )
+  )
+
+# ANOVA for price by day part
+if (n_distinct(time_data$day_part) >= 2) {
+  time_price_anova <- aov(PRICE_final ~ day_part, data = time_data)
+  cat("ANOVA - Price Differences by Time of Day:\n")
+  print(summary(time_price_anova))
+}
+
+# Kruskal-Wallis for win rate by day part
+time_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ day_part, data = time_data)
+cat("\nKruskal-Wallis Test - Win Rate Differences by Time of Day:\n")
+cat(sprintf("H = %.2f, p-value = %.6f\n", 
+            time_win_kruskal$statistic, time_win_kruskal$p.value))
+cat("\n")
+```
+
+```{r}
+# PART 6: MULTIVARIATE ANALYSIS
+
+cat("\n6. MULTIVARIATE ANALYSIS\n")
+cat(strrep("=", 70), "\n\n")
+
+# 6.1 Prepare data for modeling
+cat("6.1 Linear Model: Factors Affecting Bid Price\n")
+cat(strrep("-", 70), "\n")
+
+# Create modeling dataset with raw variables
+model_data <- bids_clean %>%
+  filter(!is.na(PRICE_final) & 
+         !is.na(DEVICE_TYPE_clean) & 
+         !is.na(DEVICE_GEO_CITY_clean) & 
+         !is.na(SIZE)) %>%
+  # Create indicator variables
+  mutate(
+    Type_one = as.numeric(DEVICE_TYPE_clean == "1"),
+    Type_four = as.numeric(DEVICE_TYPE_clean == "4"),
+    Type_two = as.numeric(DEVICE_TYPE_clean == "2"),
+    in_top_city = as.numeric(DEVICE_GEO_CITY_clean %in% top5_cities),
+    is_common_size = as.numeric(SIZE %in% common_sizes[1:3]),
+    hour_of_day = hour(TIMESTAMP_clean),
+    log_price = log(PRICE_final + 0.001),
+    log_response = log(RESPONSE_TIME_clean + 1)
+  ) %>%
+  # Take a sample if data is too large
+  { if (nrow(.) > 50000) sample_n(., 50000) else . }
+
+# Fit linear model for price
+if (nrow(model_data) > 100) {
+  price_model <- lm(log_price ~ Type_one + Type_four + 
+                 Type_two + in_top_city + is_common_size 
+                 + hour_of_day + log_response, data = model_data)
+  
+  cat("Linear Model Summary (Log Price):\n")
+  print(summary(price_model))
+}
+
+# 6.2 Logistic regression for win probability
+cat("\n6.2 Logistic Regression: Factors Affecting Win Probability\n")
+cat(strrep("-", 70), "\n")
+
+if (nrow(model_data) > 100) {
+  win_model <- glm(BID_WON_clean ~ PRICE_final + Type_one 
+                   + Type_four + Type_two + in_top_city + 
+                     is_common_size + hour_of_day + 
+                     RESPONSE_TIME_clean, family = binomial(), data = model_data)
+  
+  cat("Logistic Model Summary (Win Probability):\n")
+  print(summary(win_model))
+  
+  # Calculate odds ratios
+  odds_ratios <- exp(coef(win_model))
+  cat("\nOdds Ratios (Multiplicative Effect on Win Odds):\n")
+  print(round(odds_ratios, 3))
+}
+cat("\n")
+```
+Conclusion: The result of P-value and Odds Ratios will change a little bit during every run, since I randomly pick part of these data. But we can find that Price is highly significant systematic difference. Most Device type has significant systematic difference, but p-value of the Type_four is around alpha=0.05. Region and device size has significant systematic difference. The hour in day has less systematic difference since odds ratios is close to 1. The Response time has no systematic difference since p-value > 0.05 and odds ratios = 1
 
 
 
