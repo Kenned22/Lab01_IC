@@ -684,17 +684,11 @@ bids_clean <- bids_clean %>%
   mutate(
     BID_WON_clean = as.logical(BID_WON_clean),
     TIMESTAMP_clean = as.POSIXct(TIMESTAMP_clean),
-    DEVICE_TYPE = as.factor(DEVICE_TYPE_clean),
-    SIZE = as.factor(SIZE)
+    DEVICE_TYPE = as.factor(DEVICE_TYPE),
+    SIZE = as.factor(SIZE),
+    AUCTION_ID = as.factor(AUCTION_ID)
   )
 
-# Extract time features for analysis
-bids_clean <- bids_clean %>%
-  mutate(
-    hour_of_day = hour(TIMESTAMP_clean),
-    day_of_week = wday(TIMESTAMP_clean, label = TRUE),
-    is_weekend = ifelse(day_of_week %in% c("Sat", "Sun"), TRUE, FALSE)
-  )
 ```
 
 #1. Which features are most predictive of a win?
@@ -714,47 +708,49 @@ win_summary <- bids_clean %>%
 print(win_summary)
 ```
 ```{r}
-# 1.2 Distribution of winning bids vs losing bids
+# 1.2 Distribution of winning bids vs losing bids with custom colors
 ggplot(bids_clean %>% filter(!is.na(PRICE_final)),
        aes(x = PRICE_final, fill = BID_WON_clean)) +
   geom_density(alpha = 0.5) +
   scale_x_log10(labels = scales::dollar) +
-  labs(title = "Distribution of Bid Prices by Win Status",
-       x = "Bid Price (log scale)",
-       y = "Density") +
-  theme_minimal()
+  scale_fill_manual(
+    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
+    labels = c("FALSE" = "Lost", "TRUE" = "Won"),
+    name = "Bid Outcome"
+  ) +
+  labs(
+    title = "Distribution of Bid Prices by Win Status",
+    subtitle = "Logarithmic scale for better visualization",
+    x = "Bid Price (log scale)",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray50")
+  )
 ```
 ```{r}
-# 1.3 Response time analysis by win status
+# 1.3 Response time analysis by win status with custom colors
 ggplot(bids_clean, aes(x = RESPONSE_TIME_clean, fill = BID_WON_clean)) +
   geom_density(alpha = 0.5) +
-  labs(title = "Distribution of Response Times by Win Status",
-       x = "Response Time",
-       y = "Density") +
-  theme_minimal()
+  scale_fill_manual(
+    values = c("FALSE" = "#D55E00", "TRUE" = "#009E73"),
+    labels = c("FALSE" = "Lost", "TRUE" = "Won"),
+    name = "Bid Outcome"
+  ) +
+  labs(
+    title = "Distribution of Response Times by Win Status",
+    x = "Response Time",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 ```
-```{r}
-# 1.4 Time of day patterns
-time_patterns <- bids_clean %>%
-  filter(!is.na(PRICE_final)) %>%
-  group_by(hour_of_day, BID_WON_clean) %>%
-  summarise(
-    count = n(),
-    win_rate = mean(BID_WON_clean),
-    avg_price = mean(PRICE_final),
-    .groups = "drop"
-  )
 
-ggplot(time_patterns, aes(x = hour_of_day, y = win_rate, group = 1)) +
-  geom_line(color = "steelblue", size = 1) +
-  geom_point(color = "steelblue", size = 2) +
-  labs(title = "Win Rate by Hour of Day",
-       x = "Hour of Day",
-       y = "Win Rate") +
-  theme_minimal()
-```
 ```{r}
-# 1.5 Device type analysis
+# 1.4 Device type analysis
 device_analysis <- bids_clean %>%
   filter(!is.na(PRICE_final)) %>%
   group_by(DEVICE_TYPE) %>%
@@ -768,7 +764,7 @@ device_analysis <- bids_clean %>%
 print(device_analysis)
 ```
 ```{r}
-# 1.6 Ad size analysis
+# 1.5 Ad size analysis
 size_analysis <- bids_clean %>%
   filter(!is.na(PRICE_final)) %>%
   group_by(SIZE) %>%
@@ -932,6 +928,8 @@ missing_analysis <- bids_clean %>%
 print(missing_analysis)
 ```
 ```{r}
+#(not fix yet)
+
 # Create a summary report
 cat("=== EXPLORATORY DATA ANALYSIS SUMMARY ===\n\n")
 
