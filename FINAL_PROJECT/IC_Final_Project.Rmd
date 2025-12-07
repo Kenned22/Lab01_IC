@@ -114,6 +114,7 @@ library(tigris)     # US geographic boundaries
 library(sf)         # spatial data handling
 library(viridis)    # colorblind-safe palettes(maps)
 library(mgcv)       # GAM/BAM modeling
+library(pROC)
 
 source(here("src", "data_cleaning.r"))  # Functions loaded at runtime - linter warnings are false positives
 
@@ -446,7 +447,7 @@ ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)
 
 ```
 
-### Figure summary 
+### Figure summary
 
 The violin–boxplot shows clear differences in how bid prices behave for winning and losing bids. Losing bids are mostly concentrated at very low prices, with only a few stretching upward. In contrast, winning bids tend to be higher overall, with a wider spread and a noticeably higher median. While there is still some overlap at the lower end, the shape of the distributions shows that higher bid prices are much more common among winning bids. Overall, the plot suggests that bidding slightly more greatly improves the odds of winning.
 
@@ -460,14 +461,14 @@ ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
   geom_boxplot(show.legend = FALSE) +     # boxplots for each advertiser
   coord_flip() +                          # horizontal orientation for readability
   labs(
-    title = "Bid Distributions by Advertiser",  
-    x = "Advertiser",                           
-    y = "Bid Amount"                            
+    title = "Bid Distributions by Advertiser",
+    x = "Advertiser",
+    y = "Bid Amount"
   )
 
 ```
 
-### Figure summary 
+### Figure summary
 
 The boxplot highlights how bidding behavior varies widely across advertisers. Some advertisers place consistently low and tightly clustered bids, while others submit much higher bids with a broader spread. Several advertisers show long tails and many outliers, indicating occasional aggressive bidding. A few advertisers also stand out with significantly higher median bid values compared to the rest. Overall, the plot shows that bidding strategies differ substantially across advertisers, with some adopting conservative pricing and others frequently pushing toward the upper end of the bid range.
 
@@ -527,7 +528,7 @@ test_data  <- bids_clean[-train_index, ]
 # Fit BAM model on training data
 
 model <- bam(
-  BID_WON_clean ~ 
+  BID_WON_clean ~
     s(PRICE_final, k = 10) +
     te(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean, k = c(8, 8)),
   data = train_data,
@@ -563,10 +564,10 @@ print(auc_value)
 
 The AUC of 0.86 shows that our model is very effective at separating winning and losing bids, about 86% of the time, it assigns a higher win probability to an actual winner than to a loser. This indicates strong predictive power, meaning the model is reliable for estimating competitive bid prices, identifying locations where bids tend to perform better or worse, and predicting the likelihood of winning for new bids.
 
-## Trend to our predicted model 
+## Trend to our predicted model
 
 ```{r}
-# showing price in relation to probability of win or loss a bid 
+# showing price in relation to probability of win or loss a bid
 
 ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
   geom_point(alpha = 0.1, color = "#009E73") +
@@ -580,7 +581,7 @@ ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
 
 ```
 
-### Figure summary 
+### Figure summary
 
 The figure shows how win probability changes with bid price. Win chances rise quickly at low prices, meaning small increases make a big difference. As prices move higher, the improvement slows, and eventually the probability levels off, suggesting that once a bid is competitive, raising the price further adds little benefit.
 
@@ -624,7 +625,7 @@ ggplot() +
     bins = 50,
     alpha = 0.85
   ) +
-  
+
   # Color scale for predictions
   scale_fill_viridis_c(
     option = "plasma",
@@ -993,7 +994,7 @@ col_comparison(bids, bids_clean, "PRICE_clean", "PRICE_final")
 
 
 #------------------------------------------------------------------------
-# Group Zips into Hexes and categorize hex by city with most frequent 
+# Group Zips into Hexes and categorize hex by city with most frequent
 # zip per hex
 #------------------------------------------------------------------------
 bids_clean <- bids_clean_2
@@ -1134,7 +1135,7 @@ bids_clean <- bids_clean %>%
     ) / 1000
   )
 
-ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000), 
+ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
              aes(x = dist_to_portland_row_km, y = PRICE_final)) +
   geom_point(alpha = 0.1, size = 0.3) +
   geom_smooth(method = "loess", color = "red") +
@@ -1155,7 +1156,7 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 #       na_count = sum(is.na(PRICE_clean))
 #     ) %>%
 #     mutate(dataset = "Raw data (PRICE_clean, numeric) ", .before = 1),
-# 
+#
 #   bids_clean %>%
 #     summarise(
 #       mean = mean(PRICE_final, na.rm = TRUE),
@@ -1171,28 +1172,28 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 # ggplot(bids_clean, aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, color = PRICE_final)) +
 #   geom_point(alpha = 0.3) +
 #   coord_fixed(1.3)
-# 
-# 
+#
+#
 # # Plot ZCTAs with bid locations
 # ggplot() +
 #   geom_sf(data = zip_code_db, fill = "white", color = "gray70") +
-#   geom_point(data = bids_clean, 
+#   geom_point(data = bids_clean,
 #              aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean),
 #              alpha = 0.2, size = 0.5, color = "steelblue") +
 #   theme_minimal() +
 #   labs(title = "Bid Locations in Oregon")
-# 
+#
 # ggplot() +
 #   geom_sf(data = zip_code_db, fill = "white", color = "gray80") +
-#   stat_summary_hex(data = bids_clean, 
+#   stat_summary_hex(data = bids_clean,
 #                    aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
 #                    fun = mean, bins = 30, alpha = 0.8) +
 #   scale_fill_viridis_c(option = "plasma") +
 #   theme_minimal()
-# 
+#
 
 
-# 
+#
 # # Now summarize by hex
 # hex_summary <- bids_clean %>%
 #   group_by(hex_id) %>%
@@ -1206,11 +1207,11 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 #     center_lat = mean(DEVICE_GEO_LAT_clean, na.rm = TRUE)
 #   )
 # hex_summary
-# 
-# 
+#
+#
 # # Step 1: Assign hex IDs to bids
 # library(hexbin)
-# 
+#
 # hb <- hexbin(
 #   x = bids_clean$DEVICE_GEO_LONG_clean,
 #   y = bids_clean$DEVICE_GEO_LAT_clean,
@@ -1218,7 +1219,7 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 #   IDs = TRUE
 # )
 # bids_clean$hex_id <- hb@cID
-# 
+#
 # # Step 2: Find most frequent ZIP per hex
 # hex_top_zip <- bids_clean %>%
 #   filter(!is.na(hex_id), !is.na(DEVICE_GEO_ZIP_clean)) %>%
@@ -1227,16 +1228,16 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 #   group_by(hex_id) %>%
 #   slice_max(zip_count, n = 1, with_ties = FALSE) %>%
 #   ungroup()
-# 
+#
 # # Step 3: Get city names from zipcodeR
 # zip_city_lookup <- zipcodeR::zip_code_db %>%
 #   filter(state == "OR") %>%
 #   select(zipcode, major_city)
-# 
+#
 # # Step 4: Join to get cities
 # hex_with_city <- hex_top_zip %>%
 #   left_join(zip_city_lookup, by = c("DEVICE_GEO_ZIP_clean" = "zipcode"))
-# 
+#
 # print(hex_with_city)
 
 
