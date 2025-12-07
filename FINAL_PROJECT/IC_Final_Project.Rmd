@@ -538,6 +538,16 @@ summary(model)
 
 ```
 
+### Model Interpretation
+
+The model shows a strong and clear relationship between how much an advertiser bids and their chances of winning the auction. The smooth term for bid amount (s(PRICE_final)) is highly significant (p < 2e-16), meaning changes in bid price have a meaningful effect on the probability of winning. In general, higher bids increase the likelihood of winning, which aligns with how auction systems typically function.
+
+The spatial smooth term (s(longitude, latitude)) is also significant, indicating that location matters as well—some geographic areas are naturally more competitive than others.
+
+The model explains about 31% of the deviance and has an adjusted R-squired of 0.349, which is reasonable for behavioral auction data. Overall, the results suggest that while bid amount is a major driver of winning probability, location-based competition also plays an important role.
+
+## Model prediction accuracy
+
 ```{r}
 # Predict on test data
 test_data$pred_prob <- predict(model, newdata = test_data, type = "response")
@@ -549,8 +559,11 @@ auc_value <- auc(roc_obj)
 print(auc_value)
 ```
 
+## Trend to our predicted model 
 
 ```{r}
+# showing price in relation to probability of winning a bid 
+
 ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
   geom_point(alpha = 0.1, color = "darkblue") +
   geom_smooth(color = "red", se = FALSE, size = 1.2) +
@@ -564,7 +577,6 @@ ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
 ```
 
 ## spatial representation of win probability across cities
-
 
 ```{r}
 # Predict win probability using your trained model
@@ -619,7 +631,7 @@ ggplot() +
   coord_sf(expand = FALSE) +
   labs(
     title = "Model-Predicted Win Probability Across Oregon Cities",
-    subtitle = "Spatial representation using GAM/BAM probability estimates",
+    subtitle = "Spatial representation using Big Additive Model probability estimates",
     x = "Longitude",
     y = "Latitude"
   ) +
