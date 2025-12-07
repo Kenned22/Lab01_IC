@@ -683,6 +683,298 @@ cat("   - Missing PRICE_final values:", sum(is.na(bids_clean$PRICE_final)),
 
 
 ### **4. Data Quality–Driven Questions**
+* **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
+* **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
+
+# price
+```{r}
+library(hexbin)
+library(geosphere)
+
+bids_clean_2 <- bids_clean
+
+col_comparison <- function(df_1, df_2, col_1, col_2, label_1 = "Before", label_2 = "After") {
+  bind_rows(
+    df_1 %>%
+      summarise(
+        mean = mean(.data[[col_1]], na.rm = TRUE),
+        sd = sd(.data[[col_1]], na.rm = TRUE),
+        min = min(.data[[col_1]], na.rm = TRUE),
+        max = max(.data[[col_1]], na.rm = TRUE),
+        n = n(),
+        na_count = sum(is.na(.data[[col_1]]))
+      ) %>%
+      mutate(dataset = label_1, .before = 1),
+
+    df_2 %>%
+      summarise(
+        mean = mean(.data[[col_2]], na.rm = TRUE),
+        sd = sd(.data[[col_2]], na.rm = TRUE),
+        min = min(.data[[col_2]], na.rm = TRUE),
+        max = max(.data[[col_2]], na.rm = TRUE),
+        n = n(),
+        na_count = sum(is.na(.data[[col_2]]))
+      ) %>%
+      mutate(dataset = label_2, .before = 1)
+  )
+}
+
+col_comparison(bids, bids_clean, "PRICE_clean", "PRICE_final")
+
+
+#------------------------------------------------------------------------
+# Group Zips into Hexes and categorize hex by city with most frequent 
+# zip per hex
+#------------------------------------------------------------------------
+bids_clean <- bids_clean_2
+
+
+hb <- hexbin(
+  x = bids_clean$DEVICE_GEO_LONG_clean,
+  y = bids_clean$DEVICE_GEO_LAT_clean,
+  xbins = 60,  # same as bins in ggplot
+  IDs = TRUE
+)
+
+# Get cell assignments for each point
+bids_clean$hex_id <- hb@cID
+zip_city_lookup <- zipcodeR::zip_code_db %>%
+  filter(state == "OR") %>%
+  select(zipcode, major_city)
+
+# Find top ZIP per hex and join city names
+hex_with_city <- bids_clean %>%
+  # Remove rows where hex_id or ZIP is missing
+  filter(!is.na(hex_id), !is.na(DEVICE_GEO_ZIP_clean)) %>%
+  # Count how many bids per hex + ZIP combination
+  count(hex_id, DEVICE_GEO_ZIP_clean, name = "zip_count") %>%
+  # Keep only the most frequent ZIP for each hex (1 row per hex)
+  slice_max(zip_count, n = 1, by = hex_id, with_ties = FALSE) %>%
+  # Attach city name by matching ZIP to zipcodeR lookup table
+  left_join(zip_city_lookup, by = c("DEVICE_GEO_ZIP_clean" = "zipcode")) %>%
+  # Keep only the columns we need for the final join
+  select(hex_id, zip_count, major_city)
+
+# Join to bids
+bids_clean <- bids_clean %>%
+  left_join(hex_with_city, by = "hex_id")
+
+ggplot() +
+  geom_sf(data = zip_code_db, fill = "white", color = "gray80") +
+  stat_summary_hex(data = bids_clean,
+                   aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
+                   fun = mean, bins = 30, alpha = 0.8) +
+  scale_fill_viridis_c(option = "plasma") +
+  theme_minimal()
+
+#------------------------------------------------------------------------
+# Calculate distance each hex is from Portland's hex
+#------------------------------------------------------------------------
+
+# Step 1: Get hex centers from the hexbin object
+hex_centers <- tibble(
+  hex_id = hb@cell,
+  hex_x = hb@xcm,  # longitude center
+  hex_y = hb@ycm   # latitude center
+)
+
+# Step 2: Find Portland's hex (by city name or coordinates)
+# Option A: By city name (if you have major_city in hex_with_city)
+portland_hex_id <- hex_with_city %>%
+  filter(major_city == "Portland") %>%
+  pull(hex_id) %>%
+  first()
+
+# Step 3: Get Portland's hex center
+portland_center <- hex_centers %>%
+  filter(hex_id == portland_hex_id)
+
+hex_distances <- hex_centers %>%
+  rowwise() %>%
+  mutate(
+    dist_to_portland_km = distHaversine(
+      c(hex_x, hex_y),                              # this hex
+      c(portland_center$hex_x, portland_center$hex_y)  # Portland hex
+    ) / 1000  # meters to km
+  ) %>%
+  ungroup()
+
+# Step 5: Join back to bids_clean
+bids_clean <- bids_clean %>%
+  left_join(hex_distances %>% select(hex_id, dist_to_portland_km), by = "hex_id")
+
+# Calculate mean price per hex with distance
+hex_price_distance_all <- bids_clean %>%
+  filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
+  group_by(hex_id, dist_to_portland_km) %>%
+  summarise(
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    n_bids = n(),
+    .groups = "drop"
+  )
+
+
+# Calculate mean price per hex with distance
+hex_price_distance_winning <- bids_clean %>%
+  filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>%
+  group_by(hex_id, dist_to_portland_km) %>%
+  summarise(
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    n_bids = n(),
+    .groups = "drop"
+  )
+
+p1 <- ggplot(hex_price_distance_all, aes(x = dist_to_portland_km, y = avg_price)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(
+    title = "Average Bid Price vs Distance from Portland",
+    x = "Distance from Portland (km)",
+    y = "Average Price"
+  ) +
+  theme_minimal()
+
+p2 <- ggplot(hex_price_distance_winning, aes(x = dist_to_portland_km, y = avg_price)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(
+    title = "Average Winning Bid Price vs Distance from Portland",
+    x = "Distance from Portland (km)",
+    y = "Average Price"
+  ) +
+  theme_minimal()
+
+p1
+p2
+
+
+#------------------------------------------------------------------------
+# Calculate distance each bid lat/long is from Portland
+#------------------------------------------------------------------------
+
+# Portland center coordinates
+portland_lat <- 45.52
+portland_lon <- -122.68
+
+bids_clean <- bids_clean %>%
+  mutate(
+    dist_to_portland_row_km = distHaversine(
+      cbind(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean),
+      c(portland_lon, portland_lat)
+    ) / 1000
+  )
+
+ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000), 
+             aes(x = dist_to_portland_row_km, y = PRICE_final)) +
+  geom_point(alpha = 0.1, size = 0.3) +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Individual Winning Bids (10k sample)", x = "Distance (km)", y = "Price") +
+  theme_minimal()
+
+
+
+# # dplyr summarise for multiple stats at once
+# bind_rows(
+#   bids %>%
+#     summarise(
+#       mean = mean(PRICE_clean, na.rm = TRUE),
+#       sd = sd(PRICE_clean, na.rm = TRUE),
+#       min = min(PRICE_clean, na.rm = TRUE),
+#       max = max(PRICE_clean, na.rm = TRUE),
+#       n = n(),
+#       na_count = sum(is.na(PRICE_clean))
+#     ) %>%
+#     mutate(dataset = "Raw data (PRICE_clean, numeric) ", .before = 1),
+# 
+#   bids_clean %>%
+#     summarise(
+#       mean = mean(PRICE_final, na.rm = TRUE),
+#       sd = sd(PRICE_final, na.rm = TRUE),
+#       min = min(PRICE_final, na.rm = TRUE),
+#       max = max(PRICE_final, na.rm = TRUE),
+#       n = n(),
+#       na_count = sum(is.na(PRICE_final))
+#     ) %>%
+#     mutate(dataset = "Final Cleaned data (PRICE_final)", .before = 1)
+# )
+
+# ggplot(bids_clean, aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, color = PRICE_final)) +
+#   geom_point(alpha = 0.3) +
+#   coord_fixed(1.3)
+# 
+# 
+# # Plot ZCTAs with bid locations
+# ggplot() +
+#   geom_sf(data = zip_code_db, fill = "white", color = "gray70") +
+#   geom_point(data = bids_clean, 
+#              aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean),
+#              alpha = 0.2, size = 0.5, color = "steelblue") +
+#   theme_minimal() +
+#   labs(title = "Bid Locations in Oregon")
+# 
+# ggplot() +
+#   geom_sf(data = zip_code_db, fill = "white", color = "gray80") +
+#   stat_summary_hex(data = bids_clean, 
+#                    aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
+#                    fun = mean, bins = 30, alpha = 0.8) +
+#   scale_fill_viridis_c(option = "plasma") +
+#   theme_minimal()
+# 
+
+
+# 
+# # Now summarize by hex
+# hex_summary <- bids_clean %>%
+#   group_by(hex_id) %>%
+#   summarise(
+#     count = n(),
+#     avg_price = mean(PRICE_final, na.rm = TRUE),
+#     sd_price = sd(PRICE_final, na.rm = TRUE),
+#     min_price = min(PRICE_final, na.rm = TRUE),
+#     max_price = max(PRICE_final, na.rm = TRUE),
+#     center_long = mean(DEVICE_GEO_LONG_clean, na.rm = TRUE),
+#     center_lat = mean(DEVICE_GEO_LAT_clean, na.rm = TRUE)
+#   )
+# hex_summary
+# 
+# 
+# # Step 1: Assign hex IDs to bids
+# library(hexbin)
+# 
+# hb <- hexbin(
+#   x = bids_clean$DEVICE_GEO_LONG_clean,
+#   y = bids_clean$DEVICE_GEO_LAT_clean,
+#   xbins = 30,
+#   IDs = TRUE
+# )
+# bids_clean$hex_id <- hb@cID
+# 
+# # Step 2: Find most frequent ZIP per hex
+# hex_top_zip <- bids_clean %>%
+#   filter(!is.na(hex_id), !is.na(DEVICE_GEO_ZIP_clean)) %>%
+#   group_by(hex_id, DEVICE_GEO_ZIP_clean) %>%
+#   summarise(zip_count = n(), mean = mean(.data$PRICE_final), .groups = "drop") %>%
+#   group_by(hex_id) %>%
+#   slice_max(zip_count, n = 1, with_ties = FALSE) %>%
+#   ungroup()
+# 
+# # Step 3: Get city names from zipcodeR
+# zip_city_lookup <- zipcodeR::zip_code_db %>%
+#   filter(state == "OR") %>%
+#   select(zipcode, major_city)
+# 
+# # Step 4: Join to get cities
+# hex_with_city <- hex_top_zip %>%
+#   left_join(zip_city_lookup, by = c("DEVICE_GEO_ZIP_clean" = "zipcode"))
+# 
+# print(hex_with_city)
+
+
+
+```
+
+#
+
 
 
 #Data Visualization
