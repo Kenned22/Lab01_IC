@@ -510,6 +510,34 @@ bids_clean <- bids_clean %>%
   )
 ```
 
+## predicting win probability from price and location
+
+```{r}
+set.seed(123)   # for reproducibility
+
+# Create train (60%) and test (40%) indexes
+n <- nrow(bids_clean)
+train_index <- sample(seq_len(n), size = 0.6 * n)
+
+# Split data
+train_data <- bids_clean[train_index, ]
+test_data  <- bids_clean[-train_index, ]
+
+# Fit BAM model on training data
+
+model <- bam(
+  BID_WON_clean ~ 
+    s(PRICE_final, k = 10) +
+    te(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean, k = c(8, 8)),
+  data = train_data,
+  family = binomial(),
+  discrete = TRUE
+)
+
+summary(model)
+
+```
+
 
 
 
