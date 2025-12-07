@@ -206,7 +206,7 @@ run_time <- system.time({
 # LOAD EXPECTED BIDS COLUMNS FROM CSV
 #------------------------------------------------------
 expected_columns <- data.frame(readr::read_csv(
-  here::here("data", "expected_columns.csv"),
+  here::here("src", "expected_columns.csv"),
   col_types = "ccc"
 ))
 
