@@ -614,6 +614,10 @@ or_state <- states(cb = TRUE, year = 2023, class = "sf") %>%
   filter(STUSPS == "OR") %>%
   st_transform(4326)
 
+# Counties shapefile for Oregon
+or_counties <- tigris::counties(state = "OR", cb = TRUE, year = 2023, class = "sf") %>%
+  sf::st_transform(4326)
+
 # Plot Model-Predicted Win Probability
 
 ggplot() +
