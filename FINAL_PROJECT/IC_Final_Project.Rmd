@@ -565,8 +565,8 @@ print(auc_value)
 # showing price in relation to probability of win or loss a bid 
 
 ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
-  geom_point(alpha = 0.1, color = "darkblue") +
-  geom_smooth(color = "red", se = FALSE, size = 1.2) +
+  geom_point(alpha = 0.1, color = "#009E73") +
+  geom_smooth(color = "#D55E00", se = FALSE, size = 1.2) +
   labs(
     title = "Predicted Win Probability vs Bid Price",
     x = "Bid Price",
@@ -584,7 +584,6 @@ The figure shows how win probability changes with bid price. Win chances rise qu
 
 ```{r}
 # Predict win probability using your trained model
-
 bids_clean$pred_prob <- predict(
   model,
   newdata = bids_clean,
@@ -602,16 +601,13 @@ bids_pred_hex <- bids_clean %>%
     is.finite(DEVICE_GEO_LAT_clean),
     is.finite(pred_prob)
   )
-
 # Plot Model-Predicted Win Probability
 
 ggplot() +
   # Oregon boundary
   geom_sf(data = or_state, fill = "gray95", color = "gray50", linewidth = 0.4) +
-  
   # Oregon counties
   geom_sf(data = or_counties, fill = NA, color = "gray60", linewidth = 0.3) +
-  
   # Predicted win-probability hex map
   stat_summary_hex(
     data = bids_pred_hex,
@@ -631,7 +627,6 @@ ggplot() +
     name   = "Predicted\nWin Probability",
     limits = c(0, 1)
   ) +
-  
   coord_sf(expand = FALSE) +
   labs(
     title = "Model-Predicted Win Probability Across Oregon Cities",
@@ -652,6 +647,9 @@ bids_clean$BID_WON_clean <- ifelse(bids_clean$BID_WON_clean == 1, "TRUE", "FALSE
 
 ```
 
+### Plot Summary
+
+The map shows how predicted win probabilities vary across Oregon. Higher probabilities cluster around major populated areas, especially in the northwest region, while many rural areas show lower or more scattered win chances. This suggests that auction competitiveness and bidding dynamics differ by location, with some cities consistently offering more favorable conditions for winning bids than others.
 
 
 ### **3. Auction Outcomes**
