@@ -744,7 +744,7 @@ cat("\n")
 # Visualize win rate by price
 ggplot(price_analysis, aes(x = price_bucket, y = win_rate)) +
   geom_col(fill = "steelblue") +
-  geom_text(aes(label = sprintf("%.2f%%", win_rate * 100)), 
+  geom_text(aes(label = sprintf("%.2f%%", win_rate * 100)),
             vjust = -0.5, size = 3) +
   labs(title = "Win Rate by Bid Price Bucket",
        x = "Bid Price Bucket ($)",
@@ -862,7 +862,7 @@ print(hourly_analysis)
 cat("\n")
 ```
 ```{r}
-# Now analyze by day part 
+# Now analyze by day part
 cat("\nWin Rate by Day Part (Corrected Grouping):\n")
 cat(strrep("-", 70), "\n")
 
@@ -886,7 +886,7 @@ day_part_analysis <- bids_clean %>%
     median_price = median(PRICE_final, na.rm = TRUE),
     avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE)
   ) %>%
-  arrange(factor(day_part, levels = c("Night (0-6)", "Morning (6-12)", 
+  arrange(factor(day_part, levels = c("Night (0-6)", "Morning (6-12)",
                                       "Afternoon (12-18)", "Evening (18-24)")))
 
 print(day_part_analysis)
@@ -950,7 +950,7 @@ cat("A. DEVICE TYPE:\n")
 device_table <- table(bids_clean$DEVICE_TYPE_clean, bids_clean$BID_WON_clean)
 chi_device <- chisq.test(device_table)
 v_device <- cramers_v(chi_device, nrow(bids_clean), dim(device_table))
-cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n",
             chi_device$statistic, chi_device$parameter, chi_device$p.value))
 cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_device))
 cat("  Interpretation:", ifelse(v_device > 0.1, "Small effect", "Negligible effect"), "\n\n")
@@ -969,7 +969,7 @@ city_data <- bids_clean %>%
 city_table <- table(city_data$DEVICE_GEO_CITY_clean, city_data$BID_WON_clean)
 chi_city <- chisq.test(city_table)
 v_city <- cramers_v(chi_city, nrow(city_data), dim(city_table))
-cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n",
             chi_city$statistic, chi_city$parameter, chi_city$p.value))
 cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_city))
 cat("  Interpretation:", ifelse(v_city > 0.1, "Small effect", "Negligible effect"), "\n\n")
@@ -987,7 +987,7 @@ size_data <- bids_clean %>%
 size_table <- table(size_data$SIZE, size_data$BID_WON_clean)
 chi_size <- chisq.test(size_table)
 v_size <- cramers_v(chi_size, nrow(size_data), dim(size_table))
-cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("  Chi-square = %.2f, df = %d, p-value = %.6f\n",
             chi_size$statistic, chi_size$parameter, chi_size$p.value))
 cat(sprintf("  Cramer's V (effect size) = %.4f\n", v_size))
 cat("  Interpretation:", ifelse(v_size > 0.1, "Small effect", "Negligible effect"), "\n\n")
@@ -1011,11 +1011,11 @@ day_part_data <- bids_clean %>%
 
 # Kruskal-Wallis test (non-parametric ANOVA)
 kruskal_day <- kruskal.test(as.numeric(BID_WON_clean) ~ DAY_PART, data = day_part_data)
-cat(sprintf("  Kruskal-Wallis H = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("  Kruskal-Wallis H = %.2f, df = %d, p-value = %.6f\n",
             kruskal_day$statistic, kruskal_day$parameter, kruskal_day$p.value))
 
 # Eta squared for effect size
-eta_sq_day <- (kruskal_day$statistic - kruskal_day$parameter) / 
+eta_sq_day <- (kruskal_day$statistic - kruskal_day$parameter) /
   (nrow(day_part_data) - kruskal_day$parameter - 1)
 cat(sprintf("  Eta squared (effect size) = %.4f\n", eta_sq_day))
 cat("  Interpretation:", ifelse(eta_sq_day > 0.01, "Small effect", "Negligible effect"), "\n\n")
@@ -1025,9 +1025,9 @@ cat("4. FEATURE IMPORTANCE COMPARISON TABLE:\n")
 cat(strrep("-", 70), "\n")
 
 importance_table <- data.frame(
-  Feature = c("Price", "Response Time", "Device Type", "Geography (City)", 
+  Feature = c("Price", "Response Time", "Device Type", "Geography (City)",
               "Ad Size", "Time of Day (Hour)", "Day Part"),
-  Test = c("Pearson r", "Pearson r", "Cramer's V", "Cramer's V", 
+  Test = c("Pearson r", "Pearson r", "Cramer's V", "Cramer's V",
            "Cramer's V", "Point-biserial r", "Eta squared"),
   Effect_Size = c(
     continuous_cor[1, 2],  # Price
@@ -1074,10 +1074,10 @@ cat("5. VISUALIZING FEATURE IMPORTANCE:\n")
 cat(strrep("-", 70), "\n")
 
 # Effect size comparison plot
-ggplot(importance_table, aes(x = reorder(Feature, abs(Effect_Size)), 
+ggplot(importance_table, aes(x = reorder(Feature, abs(Effect_Size)),
                             y = abs(Effect_Size), fill = Interpretation)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = sprintf("%.3f%s", Effect_Size, P_Value_Sig)), 
+  geom_text(aes(label = sprintf("%.3f%s", Effect_Size, P_Value_Sig)),
             hjust = -0.1, size = 3) +
   coord_flip() +
   scale_fill_brewer(palette = "RdYlGn", direction = -1) +
@@ -1157,7 +1157,7 @@ if (length(device_types_sufficient) >= 2) {
   price_anova <- aov(PRICE_final ~ DEVICE_TYPE_clean, data = device_test_data)
   cat("ANOVA - Price Differences by Device Type:\n")
   print(summary(price_anova))
-  
+
   # Post-hoc test if significant
   if (summary(price_anova)[[1]]$`Pr(>F)`[1] < 0.05) {
     cat("\nTukey HSD Post-hoc Test (Price):\n")
@@ -1166,18 +1166,18 @@ if (length(device_types_sufficient) >= 2) {
 }
 
 # Kruskal-Wallis test for win rate
-win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ DEVICE_TYPE_clean, 
+win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ DEVICE_TYPE_clean,
                            data = device_test_data)
 cat("\nKruskal-Wallis Test - Win Rate Differences by Device Type:\n")
-cat(sprintf("H = %.2f, p-value = %.6f\n", 
+cat(sprintf("H = %.2f, p-value = %.6f\n",
             win_kruskal$statistic, win_kruskal$p.value))
 
 # Chi-square test for win distribution
-device_contingency <- table(device_test_data$DEVICE_TYPE_clean, 
+device_contingency <- table(device_test_data$DEVICE_TYPE_clean,
                            device_test_data$BID_WON_clean)
 chi_device <- chisq.test(device_contingency)
 cat("\nChi-square Test - Win Distribution by Device Type:\n")
-cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n",
             chi_device$statistic, chi_device$parameter, chi_device$p.value))
 cat("\n")
 
@@ -1278,7 +1278,7 @@ if (n_distinct(regional_test_data$city) >= 2) {
   regional_price_anova <- aov(PRICE_final ~ city, data = regional_test_data)
   cat("ANOVA - Price Differences by City:\n")
   print(summary(regional_price_anova))
-  
+
   if (summary(regional_price_anova)[[1]]$`Pr(>F)`[1] < 0.05) {
     cat("\nTukey HSD Post-hoc Test (Regional Price Differences):\n")
     print(TukeyHSD(regional_price_anova))
@@ -1286,18 +1286,18 @@ if (n_distinct(regional_test_data$city) >= 2) {
 }
 
 # Kruskal-Wallis for win rate differences
-regional_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ city, 
+regional_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ city,
                                     data = regional_test_data)
 cat("\nKruskal-Wallis Test - Win Rate Differences by City:\n")
-cat(sprintf("H = %.2f, p-value = %.6f\n", 
+cat(sprintf("H = %.2f, p-value = %.6f\n",
             regional_win_kruskal$statistic, regional_win_kruskal$p.value))
 
 # Chi-square for win distribution
-regional_contingency <- table(regional_test_data$city, 
+regional_contingency <- table(regional_test_data$city,
                              regional_test_data$BID_WON_clean)
 chi_region <- chisq.test(regional_contingency)
 cat("\nChi-square Test - Win Distribution by City:\n")
-cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n",
             chi_region$statistic, chi_region$parameter, chi_region$p.value))
 cat("\n")
 
@@ -1379,25 +1379,25 @@ if (length(common_sizes) >= 2) {
   size_test_data <- bids_clean %>%
     filter(SIZE %in% common_sizes) %>%
     mutate(SIZE = factor(SIZE))
-  
+
   # ANOVA for price differences
   size_price_anova <- aov(PRICE_final ~ SIZE, data = size_test_data)
   cat("ANOVA - Price Differences by Ad Size:\n")
   print(summary(size_price_anova))
-  
+
   # Kruskal-Wallis for win rate
-  size_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ SIZE, 
+  size_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ SIZE,
                                   data = size_test_data)
   cat("\nKruskal-Wallis Test - Win Rate Differences by Ad Size:\n")
-  cat(sprintf("H = %.2f, p-value = %.6f\n", 
+  cat(sprintf("H = %.2f, p-value = %.6f\n",
               size_win_kruskal$statistic, size_win_kruskal$p.value))
-  
+
   # Chi-square for win distribution
-  size_contingency <- table(size_test_data$SIZE, 
+  size_contingency <- table(size_test_data$SIZE,
                            size_test_data$BID_WON_clean)
   chi_size <- chisq.test(size_contingency)
   cat("\nChi-square Test - Win Distribution by Ad Size:\n")
-  cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n", 
+  cat(sprintf("X-squared = %.2f, df = %d, p-value = %.6f\n",
               chi_size$statistic, chi_size$parameter, chi_size$p.value))
 }
 cat("\n")
@@ -1423,7 +1423,7 @@ if (length(common_sizes) >= 1) {
       values_from = c(n_bids, win_rate, avg_price, avg_response),
       names_sep = "_"
     )
-  
+
   print(size_device_performance)
 }
 cat("\n")
@@ -1512,7 +1512,7 @@ if (n_distinct(time_data$day_part) >= 2) {
 # Kruskal-Wallis for win rate by day part
 time_win_kruskal <- kruskal.test(as.numeric(BID_WON_clean) ~ day_part, data = time_data)
 cat("\nKruskal-Wallis Test - Win Rate Differences by Time of Day:\n")
-cat(sprintf("H = %.2f, p-value = %.6f\n", 
+cat(sprintf("H = %.2f, p-value = %.6f\n",
             time_win_kruskal$statistic, time_win_kruskal$p.value))
 cat("\n")
 ```
@@ -1529,9 +1529,9 @@ cat(strrep("-", 70), "\n")
 
 # Create modeling dataset with raw variables
 model_data <- bids_clean %>%
-  filter(!is.na(PRICE_final) & 
-         !is.na(DEVICE_TYPE_clean) & 
-         !is.na(DEVICE_GEO_CITY_clean) & 
+  filter(!is.na(PRICE_final) &
+         !is.na(DEVICE_TYPE_clean) &
+         !is.na(DEVICE_GEO_CITY_clean) &
          !is.na(SIZE)) %>%
   # Create indicator variables
   mutate(
@@ -1549,10 +1549,10 @@ model_data <- bids_clean %>%
 
 # Fit linear model for price
 if (nrow(model_data) > 100) {
-  price_model <- lm(log_price ~ Type_one + Type_four + 
-                 Type_two + in_top_city + is_common_size 
+  price_model <- lm(log_price ~ Type_one + Type_four +
+                 Type_two + in_top_city + is_common_size
                  + hour_of_day + log_response, data = model_data)
-  
+
   cat("Linear Model Summary (Log Price):\n")
   print(summary(price_model))
 }
@@ -1562,14 +1562,14 @@ cat("\n6.2 Logistic Regression: Factors Affecting Win Probability\n")
 cat(strrep("-", 70), "\n")
 
 if (nrow(model_data) > 100) {
-  win_model <- glm(BID_WON_clean ~ PRICE_final + Type_one 
-                   + Type_four + Type_two + in_top_city + 
-                     is_common_size + hour_of_day + 
+  win_model <- glm(BID_WON_clean ~ PRICE_final + Type_one
+                   + Type_four + Type_two + in_top_city +
+                     is_common_size + hour_of_day +
                      RESPONSE_TIME_clean, family = binomial(), data = model_data)
-  
+
   cat("Logistic Model Summary (Win Probability):\n")
   print(summary(win_model))
-  
+
   # Calculate odds ratios
   odds_ratios <- exp(coef(win_model))
   cat("\nOdds Ratios (Multiplicative Effect on Win Odds):\n")
@@ -1581,11 +1581,15 @@ Conclusion: The result of P-value and Odds Ratios will change a little bit durin
 
 
 
-### **4. Data Quality–Driven Questions**
-* **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
-* **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
+### **4. Geographic Analysis**
+* Visual reprsentation of the data in a geographic map
+* Q: how does the proximity to portland affect the price of a bid?
 
+* quick comparison of price between raw and cleaned data. We see there is no real difference in the mean, meaning that the outliers did not affect the overall trends of the data too much.
 # price
+
+### Comparison between uncleaned and cleaned price data
+This is not necessarily needed for the presentation. Just was central to the original Q4. Just shows the data we fixed did not really change the statistics
 ```{r}
 library(hexbin)
 library(geosphere)
@@ -1620,7 +1624,12 @@ col_comparison <- function(df_1, df_2, col_1, col_2, label_1 = "Before", label_2
 
 col_comparison(bids, bids_clean, "PRICE_clean", "PRICE_final")
 
+```
 
+
+# Price Distance to portland (grouped)
+broke oregon into 60 hexes and grouped data. Looked at average of bid price and winning big price of each hex. Plotted average bid and winning bid price vs distance to portland.
+```{r}
 #------------------------------------------------------------------------
 # Group Zips into Hexes and categorize hex by city with most frequent
 # zip per hex
@@ -1663,9 +1672,12 @@ ggplot() +
   stat_summary_hex(data = bids_clean,
                    aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
                    fun = mean, bins = 30, alpha = 0.8) +
-  scale_fill_viridis_c(option = "plasma") +
   theme_minimal()
+```
 
+# Price vs Distance to Portland (individual bids)
+similar to above but did not group bids into regions. Just plotted each bid and calculated the distance to portland for each based on lat/long
+```{r}
 #------------------------------------------------------------------------
 # Calculate distance each hex is from Portland's hex
 #------------------------------------------------------------------------
@@ -1731,6 +1743,7 @@ p1 <- ggplot(hex_price_distance_all, aes(x = dist_to_portland_km, y = avg_price)
     x = "Distance from Portland (km)",
     y = "Average Price"
   ) +
+  scale_fill_viridis_d(option = "cividis") +
   theme_minimal()
 
 p2 <- ggplot(hex_price_distance_winning, aes(x = dist_to_portland_km, y = avg_price)) +
@@ -1741,6 +1754,7 @@ p2 <- ggplot(hex_price_distance_winning, aes(x = dist_to_portland_km, y = avg_pr
     x = "Distance from Portland (km)",
     y = "Average Price"
   ) +
+  scale_fill_viridis_d(option = "cividis") +
   theme_minimal()
 
 p1
@@ -1757,13 +1771,13 @@ portland_lon <- -122.68
 
 bids_clean <- bids_clean %>%
   mutate(
-    dist_to_portland_row_km = distHaversine(
+    dist_to_portland_row_km_bid = distHaversine(
       cbind(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean),
       c(portland_lon, portland_lat)
     ) / 1000
   )
 
-ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
+ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
              aes(x = dist_to_portland_row_km, y = PRICE_final)) +
   geom_point(alpha = 0.1, size = 0.3) +
   geom_smooth(method = "loess", color = "red") +
@@ -1772,101 +1786,6 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), B
 
 
 
-# # dplyr summarise for multiple stats at once
-# bind_rows(
-#   bids %>%
-#     summarise(
-#       mean = mean(PRICE_clean, na.rm = TRUE),
-#       sd = sd(PRICE_clean, na.rm = TRUE),
-#       min = min(PRICE_clean, na.rm = TRUE),
-#       max = max(PRICE_clean, na.rm = TRUE),
-#       n = n(),
-#       na_count = sum(is.na(PRICE_clean))
-#     ) %>%
-#     mutate(dataset = "Raw data (PRICE_clean, numeric) ", .before = 1),
-#
-#   bids_clean %>%
-#     summarise(
-#       mean = mean(PRICE_final, na.rm = TRUE),
-#       sd = sd(PRICE_final, na.rm = TRUE),
-#       min = min(PRICE_final, na.rm = TRUE),
-#       max = max(PRICE_final, na.rm = TRUE),
-#       n = n(),
-#       na_count = sum(is.na(PRICE_final))
-#     ) %>%
-#     mutate(dataset = "Final Cleaned data (PRICE_final)", .before = 1)
-# )
-
-# ggplot(bids_clean, aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, color = PRICE_final)) +
-#   geom_point(alpha = 0.3) +
-#   coord_fixed(1.3)
-#
-#
-# # Plot ZCTAs with bid locations
-# ggplot() +
-#   geom_sf(data = zip_code_db, fill = "white", color = "gray70") +
-#   geom_point(data = bids_clean,
-#              aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean),
-#              alpha = 0.2, size = 0.5, color = "steelblue") +
-#   theme_minimal() +
-#   labs(title = "Bid Locations in Oregon")
-#
-# ggplot() +
-#   geom_sf(data = zip_code_db, fill = "white", color = "gray80") +
-#   stat_summary_hex(data = bids_clean,
-#                    aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
-#                    fun = mean, bins = 30, alpha = 0.8) +
-#   scale_fill_viridis_c(option = "plasma") +
-#   theme_minimal()
-#
-
-
-#
-# # Now summarize by hex
-# hex_summary <- bids_clean %>%
-#   group_by(hex_id) %>%
-#   summarise(
-#     count = n(),
-#     avg_price = mean(PRICE_final, na.rm = TRUE),
-#     sd_price = sd(PRICE_final, na.rm = TRUE),
-#     min_price = min(PRICE_final, na.rm = TRUE),
-#     max_price = max(PRICE_final, na.rm = TRUE),
-#     center_long = mean(DEVICE_GEO_LONG_clean, na.rm = TRUE),
-#     center_lat = mean(DEVICE_GEO_LAT_clean, na.rm = TRUE)
-#   )
-# hex_summary
-#
-#
-# # Step 1: Assign hex IDs to bids
-# library(hexbin)
-#
-# hb <- hexbin(
-#   x = bids_clean$DEVICE_GEO_LONG_clean,
-#   y = bids_clean$DEVICE_GEO_LAT_clean,
-#   xbins = 30,
-#   IDs = TRUE
-# )
-# bids_clean$hex_id <- hb@cID
-#
-# # Step 2: Find most frequent ZIP per hex
-# hex_top_zip <- bids_clean %>%
-#   filter(!is.na(hex_id), !is.na(DEVICE_GEO_ZIP_clean)) %>%
-#   group_by(hex_id, DEVICE_GEO_ZIP_clean) %>%
-#   summarise(zip_count = n(), mean = mean(.data$PRICE_final), .groups = "drop") %>%
-#   group_by(hex_id) %>%
-#   slice_max(zip_count, n = 1, with_ties = FALSE) %>%
-#   ungroup()
-#
-# # Step 3: Get city names from zipcodeR
-# zip_city_lookup <- zipcodeR::zip_code_db %>%
-#   filter(state == "OR") %>%
-#   select(zipcode, major_city)
-#
-# # Step 4: Join to get cities
-# hex_with_city <- hex_top_zip %>%
-#   left_join(zip_city_lookup, by = c("DEVICE_GEO_ZIP_clean" = "zipcode"))
-#
-# print(hex_with_city)
 
 
 
