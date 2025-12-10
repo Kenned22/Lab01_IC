@@ -410,6 +410,7 @@ ggplot(bids_clean, aes(y = BID_WON_clean, x = PRICE_final, fill = BID_WON_clean)
     y = "Bid Outcome"                                     # y-axis label
   ) +
   scale_y_discrete(labels = c("FALSE" = "Lost Bids", "TRUE" = "Won Bids")) +
+  scale_fill_viridis_d(option = "cividis") +
   theme_minimal(base_size = 13) +                         # clean theme
   theme(plot.title = element_text(face = "bold"))         # bold title
 
@@ -440,6 +441,7 @@ ggplot(bids_clean, aes(x = BID_WON_clean, y = PRICE_final, fill = BID_WON_clean)
     y = "Bid Price"
   ) +
   scale_x_discrete(labels = c("FALSE" = "Lost Bids", "TRUE" = "Won Bids")) +
+   scale_fill_viridis_d(option = "cividis") +
   theme_minimal(base_size = 13) +                           # clean theme
   theme(
     plot.title = element_text(face = "bold", size = 15),    # bold title
@@ -462,6 +464,7 @@ ggplot(bids_clean, aes(x = factor(PUBLISHER_ID), y = PRICE_final,
                        fill = factor(PUBLISHER_ID))) +
   geom_boxplot(show.legend = FALSE) +     # boxplots for each advertiser
   coord_flip() +                          # horizontal orientation for readability
+  scale_fill_viridis_d(option = "cividis") +
   labs(
     title = "Bid Distributions by Publishers",
     x = "Publisher",
@@ -485,6 +488,11 @@ ggplot(bids_clean, aes(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean)) +
                        name = "Avg Bid Price (log scale)") +
   coord_equal() +                                        # preserve geographic proportions
   facet_wrap(~ PUBLISHER_ID) +                           # separate map panel per advertiser
+  scale_fill_viridis_c(
+    option = "cividis",        # ← use cividis for continuous scale
+    trans = "log",
+    name = "Avg Bid Price\n(log scale)"
+  )  +
   labs(
     title = "Spatial Patterns of Publisher Bid Prices Across Oregon",
     x = "Longitude",
@@ -573,15 +581,18 @@ The AUC of 0.86 shows that our model is very effective at separating winning and
 ```{r}
 # showing price in relation to probability of win or loss a bid
 
-ggplot(test_data, aes(x = PRICE_final, y = pred_prob)) +
-  geom_point(alpha = 0.1, color = "#009E73") +
-  geom_smooth(color = "#D55E00", se = FALSE, size = 1.2) +
+ggplot(test_data, aes(x = PRICE_final, y = pred_prob, color = pred_prob)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(color = "black", se = FALSE, size = 1.2) +
+  scale_color_viridis_c(option = "cividis") +
   labs(
     title = "Predicted Win Probability vs Bid Price",
     x = "Bid Price",
-    y = "Predicted Win Probability"
+    y = "Predicted Win Probability",
+    color = "Win Prob"
   ) +
   theme_minimal(base_size = 13)
+
 
 ```
 
