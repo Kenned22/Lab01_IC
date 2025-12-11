@@ -1539,6 +1539,14 @@ ggplot() +
   stat_summary_hex(data = bids_clean,
                    aes(x = DEVICE_GEO_LONG_clean, y = DEVICE_GEO_LAT_clean, z = PRICE_final),
                    fun = mean, bins = 30, alpha = 0.8) +
+  labs(
+    title = "Average Bid Price by Region",
+    subtitle = "Oregon",
+    fill = "Avg Price",
+    x = NULL,
+    y = NULL
+  ) +
+  scale_fill_viridis_c(option = "cividis") +
   theme_minimal()
 ```
 
@@ -1709,6 +1717,7 @@ urban_summary %>%
   facet_wrap(~metric, scales = "free_y", nrow = 1) +
   labs(title = "Urban vs Rural Comparison", x = "", caption = "85373 rural bids, 355610 urban bids") +
   theme_minimal() +
+  scale_fill_viridis_d(option = "cividis") +
   theme(legend.position = "none")
 
 
@@ -1716,127 +1725,125 @@ urban_summary %>%
 ```
 ```{r}
 
+#SCRATCH CODE FOR NOW 
 
-
-
-
-population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
-population_or <- population_or %>%
-  rename(city = `Incorporated City/Town`,
-         population = `Revised Population Estimate july 1, 2024`)
-
-
-# Add city based on zip to bids_clean.
-bids_clean <- bids_clean %>%
-  select(-any_of("population")) %>%  # remove if exists
-  left_join(
-    population_or %>% select(city, population),
-    by = c("major_city" = "city")
-  )
-
-
-bids_clean %>%
-  filter(BID_WON_clean == TRUE, !is.na(population)) %>% 
-    head(10)
-
-bids_clean %>%
-  filter(BID_WON_clean == TRUE, !is.na(population)) %>%
-  ggplot(aes(x = population, y = PRICE_final)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "loess", color = "red") +
-  labs(
-    title = "Winning Bid Price vs City Population",
-    x = "Population",
-    y = "Price"
-  ) +
-  scale_x_continuous(labels = scales::comma) +
-  theme_minimal()
-
-
-population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
-population_or <- population_or %>%
-  rename(city = `Incorporated City/Town`,
-         population = `Revised Population Estimate july 1, 2024`)
-
-
-# Add city based on zip to bids_clean.
-bids_clean <- bids_clean %>%
-  select(-any_of("population")) %>%  # remove if exists
-  left_join(
-    population_or %>% select(city, population),
-    by = c("major_city" = "city")
-  )
-
-
-city_grouping_winning_bids <- bids_clean %>%
-    filter(BID_WON_clean == TRUE, !is.na(population), !is.na(DEVICE_GEO_ZIP_clean)) %>%
-    group_by(city) %>%
-      summarise(
-        avg_price = mean(PRICE_final, na.rm = TRUE),
-        n_bids = n(),
-        avg_population = mean(population, na.rm = TRUE),
-        ave_km_to_pdx = mean(dist_to_portland_row_km_bid, na.rm = TRUE),
-        .groups = "drop"
-      ) %>% filter (n_bids > 100) %>%
-    mutate(km_to_pdx_o_pop = avg_population/ave_km_to_pdx)
-
-
-
-
-city_grouping_winning_bids %>%
-  ggplot(aes(x = avg_population, y = avg_price, size)) +
-  geom_point(alpha = 0.5) +
-  labs(
-    title = "Average Winning Bid Price vs City Population (by ZIP)",
-    x = "Population",
-    y = "Average Winning Price",
-    size = "# Bids"
-  ) +
-  scale_x_continuous(labels = scales::comma) +
-  theme_minimal()
-
+# population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
+# population_or <- population_or %>%
+#   rename(city = `Incorporated City/Town`,
+#          population = `Revised Population Estimate july 1, 2024`)
+# 
+# 
+# # Add city based on zip to bids_clean.
 # bids_clean <- bids_clean %>%
-#     filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
-#     group_by(hex_id, dist_to_portland_km) %>%
-#     summarise(
-#       avg_price = mean(PRICE_final, na.rm = TRUE),
-#       n_bids = n(),
-#       .groups = "drop"
+#   select(-any_of("population")) %>%  # remove if exists
+#   left_join(
+#     population_or %>% select(city, population),
+#     by = c("major_city" = "city")
+#   )
+# 
+# 
+# bids_clean %>%
+#   filter(BID_WON_clean == TRUE, !is.na(population)) %>% 
+#     head(10)
+# 
+# bids_clean %>%
+#   filter(BID_WON_clean == TRUE, !is.na(population)) %>%
+#   ggplot(aes(x = population, y = PRICE_final)) +
+#   geom_point(alpha = 0.1) +
+#   geom_smooth(method = "loess", color = "red") +
+#   labs(
+#     title = "Winning Bid Price vs City Population",
+#     x = "Population",
+#     y = "Price"
+#   ) +
+#   scale_x_continuous(labels = scales::comma) +
+#   theme_minimal()
+# 
+# 
+# population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
+# population_or <- population_or %>%
+#   rename(city = `Incorporated City/Town`,
+#          population = `Revised Population Estimate july 1, 2024`)
+# 
+# 
+# # Add city based on zip to bids_clean.
+# bids_clean <- bids_clean %>%
+#   select(-any_of("population")) %>%  # remove if exists
+#   left_join(
+#     population_or %>% select(city, population),
+#     by = c("major_city" = "city")
+#   )
+# 
+# 
+# city_grouping_winning_bids <- bids_clean %>%
+#     filter(BID_WON_clean == TRUE, !is.na(population), !is.na(DEVICE_GEO_ZIP_clean)) %>%
+#     group_by(city) %>%
+#       summarise(
+#         avg_price = mean(PRICE_final, na.rm = TRUE),
+#         n_bids = n(),
+#         avg_population = mean(population, na.rm = TRUE),
+#         ave_km_to_pdx = mean(dist_to_portland_row_km_bid, na.rm = TRUE),
+#         .groups = "drop"
+#       ) %>% filter (n_bids > 100) %>%
+#     mutate(km_to_pdx_o_pop = avg_population/ave_km_to_pdx)
+# 
+# 
+# 
+# 
+# city_grouping_winning_bids %>%
+#   ggplot(aes(x = avg_population, y = avg_price, size)) +
+#   geom_point(alpha = 0.5) +
+#   labs(
+#     title = "Average Winning Bid Price vs City Population (by ZIP)",
+#     x = "Population",
+#     y = "Average Winning Price",
+#     size = "# Bids"
+#   ) +
+#   scale_x_continuous(labels = scales::comma) +
+#   theme_minimal()
+# 
+# # bids_clean <- bids_clean %>%
+# #     filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
+# #     group_by(hex_id, dist_to_portland_km) %>%
+# #     summarise(
+# #       avg_price = mean(PRICE_final, na.rm = TRUE),
+# #       n_bids = n(),
+# #       .groups = "drop"
+# #     )
+# # urban <- population_or %>% filter(population > 50000) %>% arrange(desc(population))
+# 
+# 
+# 
+# city_grouping_winning_bids <- city_grouping_winning_bids %>%
+#   mutate(
+#     pop_bucket = cut(
+#       avg_population,
+#       breaks = seq(0, max(avg_population, na.rm = TRUE) + 10000, by = 1000),
+#       labels = FALSE,
+#       include.lowest = TRUE,
+#       right = TRUE
 #     )
-# urban <- population_or %>% filter(population > 50000) %>% arrange(desc(population))
-
-
-
-city_grouping_winning_bids <- city_grouping_winning_bids %>%
-  mutate(
-    pop_bucket = cut(
-      avg_population,
-      breaks = seq(0, max(avg_population, na.rm = TRUE) + 10000, by = 1000),
-      labels = FALSE,
-      include.lowest = TRUE,
-      right = TRUE
-    )
-  )
-
-t <- city_grouping_winning_bids %>%
-  filter(!is.na(avg_population), !is.na(avg_price)) %>%
-  group_by(pop_bucket) %>%
-  summarise(
-    avg_price = mean(avg_price, na.rm = TRUE),
-    n_bids = n(),
-    .groups = "drop"
-  ) %>%
-  ggplot(aes(x = pop_bucket, y = avg_price)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "loess", color = "red", se = TRUE) +
-  labs(
-    title = "Average Winning Bid Price vs City Population (by ZIP)",
-    x = "Population",
-    y = "Average Winning Price",
-    size = "# Bids"
-  ) +
-  scale_x_continuous(labels = scales::comma) +
-  theme_minimal()
+#   )
+# 
+# t <- city_grouping_winning_bids %>%
+#   filter(!is.na(avg_population), !is.na(avg_price)) %>%
+#   group_by(pop_bucket) %>%
+#   summarise(
+#     avg_price = mean(avg_price, na.rm = TRUE),
+#     n_bids = n(),
+#     .groups = "drop"
+#   ) %>%
+#   ggplot(aes(x = pop_bucket, y = avg_price)) +
+#   geom_point(alpha = 0.5) +
+#   geom_smooth(method = "loess", color = "red", se = TRUE) +
+#   labs(
+#     title = "Average Winning Bid Price vs City Population (by ZIP)",
+#     x = "Population",
+#     y = "Average Winning Price",
+#     size = "# Bids"
+#   ) +
+#   scale_x_continuous(labels = scales::comma) +
+#   theme_minimal()
 ```
 
 #Data Visualization
