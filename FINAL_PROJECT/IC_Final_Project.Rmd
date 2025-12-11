@@ -1550,6 +1550,12 @@ ggplot() +
   theme_minimal()
 ```
 
+
+This plot would not be possible without properly cleaning the lat/long data. Having consistent, valid lat/long data allowed us to use other packages and data sets (zip code data) to make plots like this and perform geographic analysis. If we were not confident in the geographic data of the cleaned data set, we would not be able to perform this or the following two analyses. 
+
+This is more for a visual perspective into bid price distribution. Did not want to draw any major conclusion from this graph. 
+
+
 # Price vs Distance to Portland (individual bids)
 similar to above but did not group bids into regions. Just plotted each bid and calculated the distance to portland for each based on lat/long
 ```{r}
@@ -1679,6 +1685,10 @@ if ("dist_to_portland_row_km_bid" %in% colnames(bids_clean)) {
 
 ```
 
+Cleaning the zip code data allowed us to confidently segment oregon into 60 hexes and bin the data into the appropriate hex. With the binned data, we could then perform the above analysis to explore if there was any correlation between distance to portland and the average winning bid price. 
+
+Plotted average winning bid price, by hex, vs  the distance the hex center was from portland. There is a weak, or no, relationship between winning bid price and distance to portland. This may point to there being no correlation between geography and winning bid price, or the indicator is more complex than just distance to portland. 
+
 #
 Urban vs Rural comparison
 
@@ -1686,7 +1696,17 @@ compared average price, median price, price standard deviation, win rate, and av
 ```{r}
 
 # Top populated urban areas (> 50,000) that are present in bids_clean$city
-urban_cities <- c("Portland", "Salem", "Eugene", "Gresham", "Hillsboro", "Bend", "Beaverton", "Medford", "Springfield", "Corvallis", "Albany")
+urban_cities <- c("Portland",
+                  "Salem",
+                  "Eugene",
+                  "Gresham",
+                  "Hillsboro",
+                  "Bend",
+                  "Beaverton",
+                  "Medford",
+                  "Springfield",
+                  "Corvallis",
+                  "Albany")
 
 # add urban/rural flag
 bids_clean <- bids_clean %>%
@@ -1700,6 +1720,7 @@ urban_summary <- bids_clean %>%
   summarise(
     n_bids = n(),
     avg_price = mean(PRICE_final, na.rm = TRUE),
+    avg_price_winning = mean(PRICE_final[BID_WON_clean == TRUE], na.rm = TRUE),
     median_price = median(PRICE_final, na.rm = TRUE),
     sd_price = sd(PRICE_final, na.rm = TRUE),
     win_rate = mean(BID_WON_clean == TRUE, na.rm = TRUE),
@@ -1711,145 +1732,26 @@ urban_summary <- bids_clean %>%
 
 # Multiple metrics side-by-side
 urban_summary %>%
-  pivot_longer(cols = c(avg_price, sd_price, median_price, win_rate, avg_response_time), 
+  pivot_longer(cols = c(avg_price, avg_price_winning, sd_price, median_price, win_rate, avg_response_time),
                names_to = "metric", values_to = "value") %>%
   ggplot(aes(x = area_type, y = value, fill = area_type)) +
   scale_fill_viridis_d(option = "cividis") +
   geom_col() +
-  facet_wrap(~metric, scales = "free_y", nrow = 1) +
-  labs(title = "Urban vs Rural Comparison", x = "", caption = "85373 rural bids, 355610 urban bids") +
+  facet_wrap(~metric, scales = "free_y", nrow = 2, labeller = label_wrap_gen(width = 5)) +
+  labs(title = "Urban (pop > 50,000) vs Rural Comparison (pop < 50,000)", x = "", caption = "85373 rural bids, 355610 urban bids") +
   theme_minimal() +
   scale_fill_viridis_d(option = "cividis") +
-  theme(legend.position = "none")
+  theme(
+    legend.position = "none",
+    strip.text = element_text(size = 8)  # adjust size
+  )
 
 
 
 ```
-We see a 
+Without proper zip code and city data, we would not have been able to segment the bid data into rural and urban groups. By ensuring that all city data was accurate and matched the cleaned zip data, we could confidently group the data and perform the above analysis. 
 
-
-```{r}
-
-#SCRATCH CODE FOR NOW 
-
-# population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
-# population_or <- population_or %>%
-#   rename(city = `Incorporated City/Town`,
-#          population = `Revised Population Estimate july 1, 2024`)
-# 
-# 
-# # Add city based on zip to bids_clean.
-# bids_clean <- bids_clean %>%
-#   select(-any_of("population")) %>%  # remove if exists
-#   left_join(
-#     population_or %>% select(city, population),
-#     by = c("major_city" = "city")
-#   )
-# 
-# 
-# bids_clean %>%
-#   filter(BID_WON_clean == TRUE, !is.na(population)) %>% 
-#     head(10)
-# 
-# bids_clean %>%
-#   filter(BID_WON_clean == TRUE, !is.na(population)) %>%
-#   ggplot(aes(x = population, y = PRICE_final)) +
-#   geom_point(alpha = 0.1) +
-#   geom_smooth(method = "loess", color = "red") +
-#   labs(
-#     title = "Winning Bid Price vs City Population",
-#     x = "Population",
-#     y = "Price"
-#   ) +
-#   scale_x_continuous(labels = scales::comma) +
-#   theme_minimal()
-# 
-# 
-# population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
-# population_or <- population_or %>%
-#   rename(city = `Incorporated City/Town`,
-#          population = `Revised Population Estimate july 1, 2024`)
-# 
-# 
-# # Add city based on zip to bids_clean.
-# bids_clean <- bids_clean %>%
-#   select(-any_of("population")) %>%  # remove if exists
-#   left_join(
-#     population_or %>% select(city, population),
-#     by = c("major_city" = "city")
-#   )
-# 
-# 
-# city_grouping_winning_bids <- bids_clean %>%
-#     filter(BID_WON_clean == TRUE, !is.na(population), !is.na(DEVICE_GEO_ZIP_clean)) %>%
-#     group_by(city) %>%
-#       summarise(
-#         avg_price = mean(PRICE_final, na.rm = TRUE),
-#         n_bids = n(),
-#         avg_population = mean(population, na.rm = TRUE),
-#         ave_km_to_pdx = mean(dist_to_portland_row_km_bid, na.rm = TRUE),
-#         .groups = "drop"
-#       ) %>% filter (n_bids > 100) %>%
-#     mutate(km_to_pdx_o_pop = avg_population/ave_km_to_pdx)
-# 
-# 
-# 
-# 
-# city_grouping_winning_bids %>%
-#   ggplot(aes(x = avg_population, y = avg_price, size)) +
-#   geom_point(alpha = 0.5) +
-#   labs(
-#     title = "Average Winning Bid Price vs City Population (by ZIP)",
-#     x = "Population",
-#     y = "Average Winning Price",
-#     size = "# Bids"
-#   ) +
-#   scale_x_continuous(labels = scales::comma) +
-#   theme_minimal()
-# 
-# # bids_clean <- bids_clean %>%
-# #     filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
-# #     group_by(hex_id, dist_to_portland_km) %>%
-# #     summarise(
-# #       avg_price = mean(PRICE_final, na.rm = TRUE),
-# #       n_bids = n(),
-# #       .groups = "drop"
-# #     )
-# # urban <- population_or %>% filter(population > 50000) %>% arrange(desc(population))
-# 
-# 
-# 
-# city_grouping_winning_bids <- city_grouping_winning_bids %>%
-#   mutate(
-#     pop_bucket = cut(
-#       avg_population,
-#       breaks = seq(0, max(avg_population, na.rm = TRUE) + 10000, by = 1000),
-#       labels = FALSE,
-#       include.lowest = TRUE,
-#       right = TRUE
-#     )
-#   )
-# 
-# t <- city_grouping_winning_bids %>%
-#   filter(!is.na(avg_population), !is.na(avg_price)) %>%
-#   group_by(pop_bucket) %>%
-#   summarise(
-#     avg_price = mean(avg_price, na.rm = TRUE),
-#     n_bids = n(),
-#     .groups = "drop"
-#   ) %>%
-#   ggplot(aes(x = pop_bucket, y = avg_price)) +
-#   geom_point(alpha = 0.5) +
-#   geom_smooth(method = "loess", color = "red", se = TRUE) +
-#   labs(
-#     title = "Average Winning Bid Price vs City Population (by ZIP)",
-#     x = "Population",
-#     y = "Average Winning Price",
-#     size = "# Bids"
-#   ) +
-#   scale_x_continuous(labels = scales::comma) +
-#   theme_minimal()
-```
+We see higher prices and win rates for rural bids compared to urban ones. The higher bids and win rates may point to companies and individuals placing ads in more rural areas are willing to pay more, and win more, based on the average winning price and win rate. 
 
 #Data Visualization
 
