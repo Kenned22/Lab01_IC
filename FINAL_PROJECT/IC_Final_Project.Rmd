@@ -742,9 +742,6 @@ bids_analysis <- bids_clean %>%
 
     # Extract date/time features
     HOUR = hour(TIMESTAMP_clean),
-    DAY_OF_WEEK = wday(DATE_UTC_clean, label = TRUE, week_start = 1),
-    DAY_OF_WEEK_NUM = as.numeric(DAY_OF_WEEK),
-    MONTH = month(DATE_UTC_clean),
     DAY = day(DATE_UTC_clean),
 
     # Convert DEVICE_TYPE to factor
@@ -893,17 +890,15 @@ numerical_features_clean <- bids_analysis %>%
     PRICE_log,
     RESPONSE_TIME_clean,
     RESPONSE_TIME_log,
-    SIZE_WIDTH,
-    SIZE_HEIGHT,
+    #SIZE_WIDTH,
+    #SIZE_HEIGHT,
     SIZE_AREA,
     NUM_REQUESTED_SIZES,
     HOUR,
-    DAY_OF_WEEK_NUM,
     DAY,
-    MONTH,
     DEVICE_GEO_LAT_clean,
     DEVICE_GEO_LONG_clean,
-    REGION_OR
+    #REGION_OR
   ) %>%
   # Remove rows with any missing values for correlation
   na.omit() %>%
@@ -978,7 +973,9 @@ ggplot(feature_importance_summary, aes(x = reorder(Feature, Value), y = Value, f
   geom_text(aes(label = round(Value, 3)),
             hjust = -0.1, size = 3.5) +
   coord_flip() +
-  scale_fill_manual(values = c("High" = "#E41A1C", "Medium" = "#377EB8", "Low" = "#4DAF4A")) +
+  scale_fill_manual(values = c("High" = "#FFE945", 
+                             "Medium" = "#7C7B78", 
+                             "Low" = "#00204D")) +
   labs(
     title = "Feature Importance for Predicting Bid Wins",
     subtitle = "Higher values indicate stronger predictive power",
