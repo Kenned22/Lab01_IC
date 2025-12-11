@@ -76,6 +76,12 @@ errors if needed.
 
 ### **4. Data Quality–Driven Questions**
 >Neal is going to be working on this question
+> CHANGED THIS TO Geographic Analysis:
+  * Visual reprsentation of the data in a geographic map
+  * Q: how does the proximity to portland affect the price of a bid?
+
+The data that needed to be cleaned was not a significant portion of the total data set, so there was not a significant change
+in staticsis of the data before vs after cleaning.
 
 * **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
 * **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
@@ -705,17 +711,17 @@ library(ggrepel)
 cramers_v <- function(x, y) {
   # Create contingency table
   confusion_matrix <- table(x, y)
-  
+
   # Calculate chi-squared test
   chi2 <- chisq.test(confusion_matrix)
-  
+
   # Get dimensions and sample size
   n <- sum(confusion_matrix)
   k <- min(dim(confusion_matrix))
-  
+
   # Calculate Cramér's V
   v <- sqrt(chi2$statistic / (n * (k - 1)))
-  
+
   return(as.numeric(v))
 }
 
@@ -726,7 +732,7 @@ cat("CATEGORICAL VARIABLE ANALYSIS WITH BID_WON\n")
 cat(strrep("=", 70), "\n\n")
 
 # Define categorical variables for analysis
-categorical_vars <- c("DEVICE_TYPE_clean", "DEVICE_GEO_REGION_clean", 
+categorical_vars <- c("DEVICE_TYPE_clean", "DEVICE_GEO_REGION_clean",
                      "DEVICE_GEO_CITY_clean", "SIZE", "DAY_OF_WEEK")
 
 # Prepare the data for correlation analysis
@@ -734,31 +740,31 @@ bids_analysis <- bids_clean %>%
   # Convert BID_WON to numeric (0/1)
   mutate(
     BID_WON_numeric = as.numeric(as.logical(BID_WON_clean)),
-    
+
     # Extract date/time features
     HOUR = hour(TIMESTAMP_clean),
     DAY_OF_WEEK = wday(DATE_UTC_clean, label = TRUE, week_start = 1),
     DAY_OF_WEEK_NUM = as.numeric(DAY_OF_WEEK),
     MONTH = month(DATE_UTC_clean),
     DAY = day(DATE_UTC_clean),
-    
+
     # Convert DEVICE_TYPE to factor
     DEVICE_TYPE_fct = as.factor(DEVICE_TYPE_clean),
-    
+
     # Create ad size area from SIZE column
     SIZE_WIDTH = as.numeric(str_extract(SIZE, "^[0-9]+")),
     SIZE_HEIGHT = as.numeric(str_extract(SIZE, "[0-9]+$")),
     SIZE_AREA = SIZE_WIDTH * SIZE_HEIGHT,
-    
+
     # Extract number of requested sizes
     NUM_REQUESTED_SIZES = map_int(REQUESTED_SIZES_clean, length),
-    
+
     # Create region indicator
     REGION_OR = as.numeric(DEVICE_GEO_REGION_clean == "OR"),
-    
+
     # Log-transform price for better distribution
     PRICE_log = log(PRICE_final + 0.001),
-    
+
     # Log-transform response time
     RESPONSE_TIME_log = log(RESPONSE_TIME_clean + 1)
   )
@@ -772,7 +778,7 @@ for (var in categorical_vars) {
       select(!!sym(var), BID_WON_numeric) %>%
       filter(!is.na(!!sym(var))) %>%
       na.omit()
-    
+
     if(nrow(temp_data) > 0 && length(unique(temp_data[[var]])) > 1) {
       # Calculate win rates
       win_rates <- temp_data %>%
@@ -783,16 +789,16 @@ for (var in categorical_vars) {
           .groups = "drop"
         ) %>%
         arrange(desc(win_rate))
-      
+
       # Calculate Cramér's V with error handling
       tryCatch({
         cramer_v <- cramers_v(temp_data[[var]], temp_data$BID_WON_numeric)
-        
+
         cat("Variable:", var, "\n")
         cat("Cramér's V:", round(cramer_v, 4), "\n")
         cat("Sample size:", nrow(temp_data), "\n")
         cat("Unique categories:", length(unique(temp_data[[var]])), "\n")
-        
+
         if(nrow(win_rates) <= 10) {
           cat("All categories:\n")
           print(win_rates)
@@ -802,7 +808,7 @@ for (var in categorical_vars) {
           cat("\nBottom 5 categories by win rate:\n")
           print(tail(win_rates, 5))
         }
-        
+
         # Store results
         categorical_results[[var]] <- list(
           cramer_v = cramer_v,
@@ -810,12 +816,12 @@ for (var in categorical_vars) {
           n = nrow(temp_data),
           n_categories = length(unique(temp_data[[var]]))
         )
-        
+
       }, error = function(e) {
         cat("Variable:", var, "\n")
         cat("Could not calculate Cramér's V:", e$message, "\n")
       })
-      
+
       cat("\n")
       cat(strrep("-", 50), "\n\n")
     } else {
@@ -839,7 +845,7 @@ for (var in categorical_vars) {
       select(!!sym(var), BID_WON_numeric) %>%
       filter(!is.na(!!sym(var))) %>%
       na.omit()
-    
+
     if(nrow(temp_data) > 0 && length(unique(temp_data[[var]])) > 1) {
       win_summary <- temp_data %>%
         group_by(!!sym(var)) %>%
@@ -849,19 +855,19 @@ for (var in categorical_vars) {
           .groups = "drop"
         ) %>%
         filter(count > 10)  # Only consider categories with enough data
-      
+
       if(nrow(win_summary) > 1) {
         win_range <- max(win_summary$win_rate) - min(win_summary$win_rate)
         best_category <- win_summary[which.max(win_summary$win_rate), ]
         worst_category <- win_summary[which.min(win_summary$win_rate), ]
-        
+
         cat("Variable:", var, "\n")
         cat("Win rate range:", round(win_range, 4), "\n")
-        cat("Best category:", best_category[[1]], 
-            "(win rate:", round(best_category$win_rate, 4), 
+        cat("Best category:", best_category[[1]],
+            "(win rate:", round(best_category$win_rate, 4),
             ", n:", best_category$count, ")\n")
-        cat("Worst category:", worst_category[[1]], 
-            "(win rate:", round(worst_category$win_rate, 4), 
+        cat("Worst category:", worst_category[[1]],
+            "(win rate:", round(worst_category$win_rate, 4),
             ", n:", worst_category$count, ")\n")
         cat("Relative difference:", round(best_category$win_rate / worst_category$win_rate, 2), "x\n")
         cat("\n")
@@ -925,7 +931,7 @@ bid_won_cor_df <- data.frame(
 for (feature in bid_won_cor_df$Feature) {
   if(feature != "BID_WON_numeric") {
     cor_value <- bid_won_cor_df$Correlation[bid_won_cor_df$Feature == feature]
-    feature_importance_summary <- rbind(feature_importance_summary, 
+    feature_importance_summary <- rbind(feature_importance_summary,
                                         data.frame(
                                           Feature = feature,
                                           Type = "Numerical",
@@ -970,7 +976,7 @@ cat(strrep("-", 70), "\n\n")
 # Create a visualization of feature importance
 ggplot(feature_importance_summary, aes(x = reorder(Feature, Value), y = Value, fill = Importance_Level)) +
   geom_bar(stat = "identity", alpha = 0.8) +
-  geom_text(aes(label = round(Value, 3)), 
+  geom_text(aes(label = round(Value, 3)),
             hjust = -0.1, size = 3.5) +
   coord_flip() +
   scale_fill_manual(values = c("High" = "#E41A1C", "Medium" = "#377EB8", "Low" = "#4DAF4A")) +
@@ -989,9 +995,9 @@ ggplot(feature_importance_summary, aes(x = reorder(Feature, Value), y = Value, f
   device_rates <- categorical_results$DEVICE_TYPE_clean$win_rates
   best_device <- device_rates[which.max(device_rates$win_rate), ]
   worst_device <- device_rates[which.min(device_rates$win_rate), ]
-  
+
 ```
-Conclusion Q1: 
+Conclusion Q1:
 PRICE IS KING:
    - Bid price has the strongest correlation with winning ( 0.487 )
    - Increasing bid price is the most reliable way to increase win probability
@@ -1071,20 +1077,20 @@ cat("Final sample size:", nrow(analysis_data_filtered), "\n\n")
 if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
     length(levels(analysis_data_filtered$DEVICE_GEO_REGION_clean)) < 2 ||
     length(levels(analysis_data_filtered$SIZE)) < 2) {
-  
+
   cat("WARNING: Insufficient variation for full multivariate model.\n")
   cat("Performing separate univariate analyses instead.\n\n")
-  
+
   # 2. SEPARATE UNIVARIATE ANALYSES
   cat("SEPARATE ANALYSES FOR EACH FACTOR\n")
   cat(strrep("-", 80), "\n\n")
-  
+
   # Function for univariate analysis
   run_univariate_analysis <- function(data, factor_var, factor_name) {
     if (length(unique(data[[factor_var]])) > 1) {
       cat(paste("ANALYSIS FOR", factor_name, ":\n"))
       cat(strrep("-", 40), "\n")
-      
+
       # Descriptive statistics
       desc_stats <- data %>%
         group_by(!!sym(factor_var)) %>%
@@ -1096,17 +1102,17 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
           .groups = "drop"
         ) %>%
         arrange(desc(win_rate))
-      
+
       cat("Descriptive Statistics:\n")
       print(desc_stats)
       cat("\n")
-      
+
       # Statistical test (ANOVA for win rate differences)
       if (nrow(desc_stats) > 1) {
         aov_result <- aov(BID_WON_numeric ~ factor(data[[factor_var]]), data = data)
         cat("ANOVA test for win rate differences:\n")
         print(summary(aov_result))
-        
+
         # Tukey HSD post-hoc test if significant
         if (summary(aov_result)[[1]]$"Pr(>F)"[1] < 0.05) {
           cat("\nTukey HSD Post-hoc Comparisons:\n")
@@ -1115,7 +1121,7 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
         }
         cat("\n")
       }
-      
+
       # Visualize
       p <- ggplot(desc_stats, aes(x = reorder(!!sym(factor_var), win_rate), y = win_rate)) +
         geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
@@ -1131,26 +1137,26 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
         ) +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
-      
+
       print(p)
       cat(strrep("=", 80), "\n\n")
     } else {
       cat(paste("Insufficient variation in", factor_name, "for analysis\n\n"))
     }
   }
-  
+
   # Run analyses for each factor
   run_univariate_analysis(analysis_data, "DEVICE_TYPE_clean", "Device Type")
   run_univariate_analysis(analysis_data, "DEVICE_GEO_REGION_clean", "Region")
   run_univariate_analysis(analysis_data, "SIZE", "Ad Size")
-  
+
 } else {
   # 3. PROCEED WITH MULTIVARIATE ANALYSIS
   cat("Proceeding with multivariate analysis...\n\n")
-  
+
   # Model 1: Basic multivariate model
   basic_model <- glm(
-    BID_WON_numeric ~ 
+    BID_WON_numeric ~
       scale(PRICE_final) +
       scale(RESPONSE_TIME_clean) +
       HOUR +
@@ -1162,11 +1168,11 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
     data = analysis_data_filtered,
     family = binomial()
   )
-  
+
   cat("MODEL 1: MULTIVARIATE LOGISTIC REGRESSION\n")
   cat(strrep("-", 80), "\n")
   cat("Model coefficients (systematic differences after controlling for other factors):\n\n")
-  
+
   # Extract and format results
   model_results <- broom::tidy(basic_model) %>%
     mutate(
@@ -1190,11 +1196,11 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       )
     ) %>%
     arrange(variable_type, term)
-  
+
   # Print systematic differences
   systematic_diffs <- model_results %>%
     filter(variable_type %in% c("Device Type", "Region", "Ad Size"))
-  
+
   if (nrow(systematic_diffs) > 0) {
     cat("SYSTEMATIC DIFFERENCES:\n")
     for (var_type in unique(systematic_diffs$variable_type)) {
@@ -1205,45 +1211,45 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       print(var_results, n = 20)
     }
   }
-  
+
   cat("\nCONTROL VARIABLE EFFECTS:\n")
   control_vars <- model_results %>%
     filter(variable_type %in% c("Price", "Response Time", "Hour", "Ad Size Area", "# Requested Sizes"))
   print(control_vars, n = 10)
-  
+
   # 4. MODEL COMPARISON TO QUANTIFY CATEGORY EFFECTS
   cat("\n\nMODEL 2: MODEL COMPARISON TO QUANTIFY CATEGORY EFFECTS\n")
   cat(strrep("-", 80), "\n")
-  
+
   # Fit models without each category to see contribution
   models <- list()
-  
+
   # Base model without categories
   models$base <- glm(
     BID_WON_numeric ~ scale(PRICE_final) + scale(RESPONSE_TIME_clean) + HOUR,
     data = analysis_data_filtered,
     family = binomial()
   )
-  
+
   # Add each category separately
   models$with_device <- glm(
     BID_WON_numeric ~ scale(PRICE_final) + scale(RESPONSE_TIME_clean) + HOUR + DEVICE_TYPE_clean,
     data = analysis_data_filtered,
     family = binomial()
   )
-  
+
   models$with_region <- glm(
     BID_WON_numeric ~ scale(PRICE_final) + scale(RESPONSE_TIME_clean) + HOUR + DEVICE_GEO_REGION_clean,
     data = analysis_data_filtered,
     family = binomial()
   )
-  
+
   models$with_size <- glm(
     BID_WON_numeric ~ scale(PRICE_final) + scale(RESPONSE_TIME_clean) + HOUR + SIZE,
     data = analysis_data_filtered,
     family = binomial()
   )
-  
+
   # Compare models using AIC
   model_comparison <- map_dfr(models, ~ data.frame(AIC = AIC(.x)), .id = "model") %>%
     mutate(
@@ -1251,38 +1257,38 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       improvement_over_base = AIC[model == "base"] - AIC
     ) %>%
     arrange(AIC)
-  
+
   cat("Model Comparison (lower AIC is better):\n")
   print(model_comparison)
-  
+
   # 5. PREDICTED WIN PROBABILITIES
   cat("\n\nMODEL 3: PREDICTED WIN PROBABILITIES BY CATEGORY\n")
   cat(strrep("-", 80), "\n")
-  
+
   # Create representative scenarios
   median_price <- median(analysis_data_filtered$PRICE_final)
   median_response <- median(analysis_data_filtered$RESPONSE_TIME_clean)
   median_hour <- 12
-  
+
   # Get top categories for each factor
   top_device <- analysis_data_filtered %>%
     count(DEVICE_TYPE_clean) %>%
     arrange(desc(n)) %>%
     pull(DEVICE_TYPE_clean) %>%
     head(3)
-  
+
   top_region <- analysis_data_filtered %>%
     count(DEVICE_GEO_REGION_clean) %>%
     arrange(desc(n)) %>%
     pull(DEVICE_GEO_REGION_clean) %>%
     head(3)
-  
+
   top_size <- analysis_data_filtered %>%
     count(SIZE) %>%
     arrange(desc(n)) %>%
     pull(SIZE) %>%
     head(3)
-  
+
   # Create prediction scenarios
   pred_scenarios <- expand.grid(
     PRICE_final = median_price,
@@ -1295,7 +1301,7 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
     SIZE = top_size,
     stringsAsFactors = TRUE
   )
-  
+
   # Predict
   predictions <- pred_scenarios %>%
     mutate(
@@ -1303,21 +1309,21 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       scenario_id = paste(DEVICE_TYPE_clean, DEVICE_GEO_REGION_clean, SIZE, sep = " | ")
     ) %>%
     arrange(desc(predicted_win))
-  
+
   cat("Top 10 Best Scenarios for Winning:\n")
   print(predictions %>%
           select(scenario_id, predicted_win) %>%
           head(10), n = 10)
-  
+
   cat("\nBottom 10 Worst Scenarios for Winning:\n")
   print(predictions %>%
           select(scenario_id, predicted_win) %>%
           tail(10), n = 10)
-  
+
   # 6. VISUALIZE CATEGORY EFFECTS
   cat("\n\nVISUALIZATION OF SYSTEMATIC DIFFERENCES\n")
   cat(strrep("-", 80), "\n")
-  
+
   # Calculate adjusted win rates (controlling for price and response time)
   adjusted_data <- analysis_data_filtered %>%
     group_by(DEVICE_TYPE_clean, DEVICE_GEO_REGION_clean, SIZE) %>%
@@ -1330,7 +1336,7 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       .groups = "drop"
     ) %>%
     filter(n > 10)
-  
+
   # Plot device differences
   if (nrow(adjusted_data) > 0) {
     p1 <- adjusted_data %>%
@@ -1342,7 +1348,7 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       filter(n_total > 50) %>%
       ggplot(aes(x = reorder(DEVICE_TYPE_clean, adj_rate), y = adj_rate)) +
       geom_bar(stat = "identity", fill = "steelblue", alpha = 0.8) +
-      geom_text(aes(label = round(adj_rate, 3)), 
+      geom_text(aes(label = round(adj_rate, 3)),
                 vjust = -0.5, size = 3) +
       labs(
         title = "Adjusted Win Rate by Device Type",
@@ -1352,7 +1358,7 @@ if (length(levels(analysis_data_filtered$DEVICE_TYPE_clean)) < 2 ||
       ) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    
+
     print(p1)
   }
 }
@@ -1369,15 +1375,15 @@ check_differences <- function(data, factor_var) {
     # Run ANOVA
     aov_test <- aov(BID_WON_numeric ~ factor(data[[factor_var]]), data = data)
     p_value <- summary(aov_test)[[1]]$"Pr(>F)"[1]
-    
+
     # Calculate range of win rates
     win_rates <- data %>%
       group_by(!!sym(factor_var)) %>%
       summarise(win_rate = mean(BID_WON_numeric), .groups = "drop")
-    
+
     range_diff <- max(win_rates$win_rate) - min(win_rates$win_rate)
     ratio <- max(win_rates$win_rate) / min(win_rates$win_rate)
-    
+
     return(list(
       has_differences = p_value < 0.05,
       p_value = p_value,
@@ -1409,18 +1415,18 @@ cat(strrep("-", 80), "\n")
 for (factor_name in names(factors_to_check)) {
   factor_var <- factors_to_check[[factor_name]]
   result <- check_differences(bids_analysis, factor_var)
-  
+
   cat(factor_name, ":\n")
   cat("  Number of categories:", result$levels, "\n")
-  cat("  Statistical significance (p-value):", 
-      ifelse(is.na(result$p_value), "N/A", 
-             paste(round(result$p_value, 4), 
+  cat("  Statistical significance (p-value):",
+      ifelse(is.na(result$p_value), "N/A",
+             paste(round(result$p_value, 4),
                    ifelse(result$p_value < 0.05, "**SIGNIFICANT**", "not significant"))), "\n")
   cat("  Win rate range:", round(result$range, 4), "\n")
   cat("  Best to worst ratio:", round(result$ratio, 2), "x\n")
-  cat("  Conclusion:", 
-      ifelse(result$has_differences, 
-             "YES - Systematic differences exist", 
+  cat("  Conclusion:",
+      ifelse(result$has_differences,
+             "YES - Systematic differences exist",
              "NO - No systematic differences"), "\n")
   cat(strrep("-", 40), "\n")
 }
@@ -1529,59 +1535,66 @@ similar to above but did not group bids into regions. Just plotted each bid and 
 #------------------------------------------------------------------------
 # Calculate distance each hex is from Portland's hex
 #------------------------------------------------------------------------
+# Check if 'dist_to_portland_km' exists in the bids_clean data frame
+if ("dist_to_portland_km" %in% colnames(bids_clean)) {
+  cat("'dist_to_portland_km' exists in bids_clean\n")
+} else {
+  cat("Adding 'dist_to_portland_km' to bids_clean\n")
 
-# Step 1: Get hex centers from the hexbin object
-hex_centers <- tibble(
-  hex_id = hb@cell,
-  hex_x = hb@xcm,  # longitude center
-  hex_y = hb@ycm   # latitude center
-)
-
-# Step 2: Find Portland's hex (by city name or coordinates)
-# Option A: By city name (if you have major_city in hex_with_city)
-portland_hex_id <- hex_with_city %>%
-  filter(major_city == "Portland") %>%
-  pull(hex_id) %>%
-  first()
-
-# Step 3: Get Portland's hex center
-portland_center <- hex_centers %>%
-  filter(hex_id == portland_hex_id)
-
-hex_distances <- hex_centers %>%
-  rowwise() %>%
-  mutate(
-    dist_to_portland_km = distHaversine(
-      c(hex_x, hex_y),                              # this hex
-      c(portland_center$hex_x, portland_center$hex_y)  # Portland hex
-    ) / 1000  # meters to km
-  ) %>%
-  ungroup()
-
-# Step 5: Join back to bids_clean
-bids_clean <- bids_clean %>%
-  left_join(hex_distances %>% select(hex_id, dist_to_portland_km), by = "hex_id")
-
-# Calculate mean price per hex with distance
-hex_price_distance_all <- bids_clean %>%
-  filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
-  group_by(hex_id, dist_to_portland_km) %>%
-  summarise(
-    avg_price = mean(PRICE_final, na.rm = TRUE),
-    n_bids = n(),
-    .groups = "drop"
+  # Step 1: Get hex centers from the hexbin object
+  hex_centers <- tibble(
+    hex_id = hb@cell,
+    hex_x = hb@xcm,  # longitude center
+    hex_y = hb@ycm   # latitude center
   )
 
+  # Step 2: Find Portland's hex (by city name or coordinates)
+  # Option A: By city name (if you have major_city in hex_with_city)
+  portland_hex_id <- hex_with_city %>%
+    filter(major_city == "Portland") %>%
+    pull(hex_id) %>%
+    first()
 
-# Calculate mean price per hex with distance
-hex_price_distance_winning <- bids_clean %>%
-  filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>%
-  group_by(hex_id, dist_to_portland_km) %>%
-  summarise(
-    avg_price = mean(PRICE_final, na.rm = TRUE),
-    n_bids = n(),
-    .groups = "drop"
-  )
+  # Step 3: Get Portland's hex center
+  portland_center <- hex_centers %>%
+    filter(hex_id == portland_hex_id)
+
+  hex_distances <- hex_centers %>%
+    rowwise() %>%
+    mutate(
+      dist_to_portland_km = distHaversine(
+        c(hex_x, hex_y),                              # this hex
+        c(portland_center$hex_x, portland_center$hex_y)  # Portland hex
+      ) / 1000  # meters to km
+    ) %>%
+    ungroup()
+
+  # Step 5: Join back to bids_clean
+  bids_clean <- bids_clean %>%
+    left_join(hex_distances %>% select(hex_id, dist_to_portland_km), by = "hex_id")
+
+  # Calculate mean price per hex with distance
+  hex_price_distance_all <- bids_clean %>%
+    filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
+    group_by(hex_id, dist_to_portland_km) %>%
+    summarise(
+      avg_price = mean(PRICE_final, na.rm = TRUE),
+      n_bids = n(),
+      .groups = "drop"
+    )
+
+
+  # Calculate mean price per hex with distance
+  hex_price_distance_winning <- bids_clean %>%
+    filter(!is.na(dist_to_portland_km), !is.na(PRICE_final), BID_WON_clean == TRUE) %>%
+    group_by(hex_id, dist_to_portland_km) %>%
+    summarise(
+      avg_price = mean(PRICE_final, na.rm = TRUE),
+      n_bids = n(),
+      .groups = "drop"
+    )
+
+}
 
 p1 <- ggplot(hex_price_distance_all, aes(x = dist_to_portland_km, y = avg_price)) +
   geom_point(alpha = 0.5) +
@@ -1617,16 +1630,22 @@ p2
 portland_lat <- 45.52
 portland_lon <- -122.68
 
-bids_clean <- bids_clean %>%
-  mutate(
-    dist_to_portland_row_km_bid = distHaversine(
-      cbind(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean),
-      c(portland_lon, portland_lat)
-    ) / 1000
-  )
+if ("dist_to_portland_row_km_bid" %in% colnames(bids_clean)) {
+  cat("'dist_to_portland_row_km_bid' exists in bids_clean\n")
+} else {
+  cat("Adding 'dist_to_portland_row_km_bid' to bids_clean\n")
+
+  bids_clean <- bids_clean %>%
+    mutate(
+      dist_to_portland_row_km_bid = distHaversine(
+        cbind(DEVICE_GEO_LONG_clean, DEVICE_GEO_LAT_clean),
+        c(portland_lon, portland_lat)
+      ) / 1000
+    )
+}
 
 ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
-             aes(x = dist_to_portland_row_km, y = PRICE_final)) +
+             aes(x = dist_to_portland_row_km_bid, y = PRICE_final)) +
   geom_point(alpha = 0.1, size = 0.3) +
   geom_smooth(method = "loess", color = "red") +
   labs(title = "Individual Winning Bids (10k sample)", x = "Distance (km)", y = "Price") +
@@ -1642,7 +1661,20 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_f
 #
 
 ```{r}
+population <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
+population <- population %>%
+  rename(city = `Incorporated City/Town`,
+         population = `Revised Population Estimate july 1, 2024`)
+# Get unique cities from hex_with_city
+hex_cities <- unique(hex_with_city$major_city)
 
+# Check what column has city names in population (might need to adjust)
+names(population)
+
+# Find cities in hex_with_city that are NOT in population
+# (adjust "city_column" to the actual column name in population)
+missing_cities <- setdiff(hex_cities, population$city_column)
+print(missing_cities)
 ```
 
 
