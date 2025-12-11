@@ -1497,7 +1497,7 @@ bids_clean <- bids_clean_2
 hb <- hexbin(
   x = bids_clean$DEVICE_GEO_LONG_clean,
   y = bids_clean$DEVICE_GEO_LAT_clean,
-  xbins = 60,  # same as bins in ggplot
+  xbins = 15,  # same as bins in ggplot
   IDs = TRUE
 )
 
