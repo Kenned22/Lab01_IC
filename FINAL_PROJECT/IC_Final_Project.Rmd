@@ -1639,7 +1639,7 @@ p2 <- ggplot(hex_price_distance_winning, aes(x = dist_to_portland_km, y = avg_pr
   scale_fill_viridis_d(option = "cividis") +
   theme_minimal()
 
-p1
+# p1
 p2
 
 
@@ -1665,12 +1665,12 @@ if ("dist_to_portland_row_km_bid" %in% colnames(bids_clean)) {
     )
 }
 
-ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
-             aes(x = dist_to_portland_row_km_bid, y = PRICE_final)) +
-  geom_point(alpha = 0.1, size = 0.3) +
-  geom_smooth(method = "loess", color = "red") +
-  labs(title = "Individual Winning Bids (10k sample)", x = "Distance (km)", y = "Price") +
-  theme_minimal()
+# ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_final), BID_WON_clean == TRUE) %>% sample_n(10000),
+#              aes(x = dist_to_portland_row_km_bid, y = PRICE_final)) +
+#   geom_point(alpha = 0.1, size = 0.3) +
+#   geom_smooth(method = "loess", color = "red") +
+#   labs(title = "Individual Winning Bids (10k sample)", x = "Distance (km)", y = "Price") +
+#   theme_minimal()
 
 
 
@@ -1680,7 +1680,9 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_f
 ```
 
 #
+Urban vs Rural comparison
 
+compared average price, median price, price standard deviation, win rate, and average response time for area with populations above 50,000 (urban) and those below 50,000 (rural)
 ```{r}
 
 # Top populated urban areas (> 50,000) that are present in bids_clean$city
@@ -1723,6 +1725,9 @@ urban_summary %>%
 
 
 ```
+We see a 
+
+
 ```{r}
 
 #SCRATCH CODE FOR NOW 
