@@ -74,17 +74,16 @@ errors if needed.
 
 ---
 
-### **4. Data Quality–Driven Questions**
->Neal is going to be working on this question
-> CHANGED THIS TO Geographic Analysis:
+### **4. Geographic Analysis**
   * Visual reprsentation of the data in a geographic map
-  * Q: how does the proximity to portland affect the price of a bid?
+  * Is there a relationship between bid pricing, all and winning bids, and proximity to portland (major city)
+  * Is there there a meaningful difference in the bid behavior of rural (population < 50,000) vs urban (pop > 50,000)
 
-The data that needed to be cleaned was not a significant portion of the total data set, so there was not a significant change
+
+Original question looked at impacts of data cleaning on analysis. The data that needed to be cleaned was not a significant portion of the total data set, so there was not a significant change
 in staticsis of the data before vs after cleaning.
 
-* **How do missing or inconsistent fields (e.g., timestamps, IDs, bid amounts) influence auction outcomes or patterns?**
-* **How does the cleaned dataset change our interpretation of key trends compared to the raw data?**
+
 
 ---
 
@@ -1442,13 +1441,18 @@ for (factor_name in names(factors_to_check)) {
 * quick comparison of price between raw and cleaned data. We see there is no real difference in the mean, meaning that the outliers did not affect the overall trends of the data too much.
 # price
 
+```{r}
+bids_clean_2 <- bids_clean
+
+```
+
 ### Comparison between uncleaned and cleaned price data
 This is not necessarily needed for the presentation. Just was central to the original Q4. Just shows the data we fixed did not really change the statistics
 ```{r}
 library(hexbin)
 library(geosphere)
 
-bids_clean_2 <- bids_clean
+
 
 col_comparison <- function(df_1, df_2, col_1, col_2, label_1 = "Before", label_2 = "After") {
   bind_rows(
@@ -1491,6 +1495,8 @@ broke oregon into 60 hexes and grouped data. Looked at average of bid price and 
 bids_clean <- bids_clean_2
 
 
+
+# Add city based on major_city per hex
 hb <- hexbin(
   x = bids_clean$DEVICE_GEO_LONG_clean,
   y = bids_clean$DEVICE_GEO_LAT_clean,
@@ -1503,6 +1509,13 @@ bids_clean$hex_id <- hb@cID
 zip_city_lookup <- zipcodeR::zip_code_db %>%
   filter(state == "OR") %>%
   select(zipcode, major_city)
+
+# Add city based on zip to bids_clean.
+bids_clean <- bids_clean %>%
+  left_join(
+    zip_city_lookup %>% select(zipcode, city = major_city),
+    by = c("DEVICE_GEO_ZIP_clean" = "zipcode")
+  )
 
 # Find top ZIP per hex and join city names
 hex_with_city <- bids_clean %>%
@@ -1661,22 +1674,170 @@ ggplot(bids_clean %>% filter(!is.na(dist_to_portland_row_km_bid), !is.na(PRICE_f
 #
 
 ```{r}
-population <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
-population <- population %>%
+
+# Top populated urban areas (> 50,000) that are present in bids_clean$city
+urban_cities <- c("Portland", "Salem", "Eugene", "Gresham", "Hillsboro", "Bend", "Beaverton", "Medford", "Springfield", "Corvallis", "Albany")
+
+# add urban/rural flag
+bids_clean <- bids_clean %>%
+  mutate(area_type = case_when(
+    city %in% urban_cities ~ "Urban",
+    TRUE ~ "Rural"
+  ))
+
+urban_summary <- bids_clean %>%
+  group_by(area_type) %>%
+  summarise(
+    n_bids = n(),
+    avg_price = mean(PRICE_final, na.rm = TRUE),
+    median_price = median(PRICE_final, na.rm = TRUE),
+    sd_price = sd(PRICE_final, na.rm = TRUE),
+    win_rate = mean(BID_WON_clean == TRUE, na.rm = TRUE),
+    avg_response_time = mean(RESPONSE_TIME_clean, na.rm = TRUE),
+    n_cities = n_distinct(city)
+  ) %>% print()
+
+# urban_summary
+
+# Multiple metrics side-by-side
+urban_summary %>%
+  pivot_longer(cols = c(avg_price, sd_price, median_price, win_rate, avg_response_time), 
+               names_to = "metric", values_to = "value") %>%
+  ggplot(aes(x = area_type, y = value, fill = area_type)) +
+  scale_fill_viridis_d(option = "cividis") +
+  geom_col() +
+  facet_wrap(~metric, scales = "free_y", nrow = 1) +
+  labs(title = "Urban vs Rural Comparison", x = "", caption = "85373 rural bids, 355610 urban bids") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+```
+```{r}
+
+
+
+
+
+population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
+population_or <- population_or %>%
   rename(city = `Incorporated City/Town`,
          population = `Revised Population Estimate july 1, 2024`)
-# Get unique cities from hex_with_city
-hex_cities <- unique(hex_with_city$major_city)
 
-# Check what column has city names in population (might need to adjust)
-names(population)
 
-# Find cities in hex_with_city that are NOT in population
-# (adjust "city_column" to the actual column name in population)
-missing_cities <- setdiff(hex_cities, population$city_column)
-print(missing_cities)
+# Add city based on zip to bids_clean.
+bids_clean <- bids_clean %>%
+  select(-any_of("population")) %>%  # remove if exists
+  left_join(
+    population_or %>% select(city, population),
+    by = c("major_city" = "city")
+  )
+
+
+bids_clean %>%
+  filter(BID_WON_clean == TRUE, !is.na(population)) %>% 
+    head(10)
+
+bids_clean %>%
+  filter(BID_WON_clean == TRUE, !is.na(population)) %>%
+  ggplot(aes(x = population, y = PRICE_final)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "loess", color = "red") +
+  labs(
+    title = "Winning Bid Price vs City Population",
+    x = "Population",
+    y = "Price"
+  ) +
+  scale_x_continuous(labels = scales::comma) +
+  theme_minimal()
+
+
+population_or <- read_csv(here("data", "2025 Preliminary Population Estimates.csv"))
+population_or <- population_or %>%
+  rename(city = `Incorporated City/Town`,
+         population = `Revised Population Estimate july 1, 2024`)
+
+
+# Add city based on zip to bids_clean.
+bids_clean <- bids_clean %>%
+  select(-any_of("population")) %>%  # remove if exists
+  left_join(
+    population_or %>% select(city, population),
+    by = c("major_city" = "city")
+  )
+
+
+city_grouping_winning_bids <- bids_clean %>%
+    filter(BID_WON_clean == TRUE, !is.na(population), !is.na(DEVICE_GEO_ZIP_clean)) %>%
+    group_by(city) %>%
+      summarise(
+        avg_price = mean(PRICE_final, na.rm = TRUE),
+        n_bids = n(),
+        avg_population = mean(population, na.rm = TRUE),
+        ave_km_to_pdx = mean(dist_to_portland_row_km_bid, na.rm = TRUE),
+        .groups = "drop"
+      ) %>% filter (n_bids > 100) %>%
+    mutate(km_to_pdx_o_pop = avg_population/ave_km_to_pdx)
+
+
+
+
+city_grouping_winning_bids %>%
+  ggplot(aes(x = avg_population, y = avg_price, size)) +
+  geom_point(alpha = 0.5) +
+  labs(
+    title = "Average Winning Bid Price vs City Population (by ZIP)",
+    x = "Population",
+    y = "Average Winning Price",
+    size = "# Bids"
+  ) +
+  scale_x_continuous(labels = scales::comma) +
+  theme_minimal()
+
+# bids_clean <- bids_clean %>%
+#     filter(!is.na(dist_to_portland_km), !is.na(PRICE_final)) %>%
+#     group_by(hex_id, dist_to_portland_km) %>%
+#     summarise(
+#       avg_price = mean(PRICE_final, na.rm = TRUE),
+#       n_bids = n(),
+#       .groups = "drop"
+#     )
+# urban <- population_or %>% filter(population > 50000) %>% arrange(desc(population))
+
+
+
+city_grouping_winning_bids <- city_grouping_winning_bids %>%
+  mutate(
+    pop_bucket = cut(
+      avg_population,
+      breaks = seq(0, max(avg_population, na.rm = TRUE) + 10000, by = 1000),
+      labels = FALSE,
+      include.lowest = TRUE,
+      right = TRUE
+    )
+  )
+
+t <- city_grouping_winning_bids %>%
+  filter(!is.na(avg_population), !is.na(avg_price)) %>%
+  group_by(pop_bucket) %>%
+  summarise(
+    avg_price = mean(avg_price, na.rm = TRUE),
+    n_bids = n(),
+    .groups = "drop"
+  ) %>%
+  ggplot(aes(x = pop_bucket, y = avg_price)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", color = "red", se = TRUE) +
+  labs(
+    title = "Average Winning Bid Price vs City Population (by ZIP)",
+    x = "Population",
+    y = "Average Winning Price",
+    size = "# Bids"
+  ) +
+  scale_x_continuous(labels = scales::comma) +
+  theme_minimal()
 ```
-
 
 #Data Visualization
 
